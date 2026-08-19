@@ -1,4 +1,5 @@
 import argparse
+import json
 
 import psutil
 
@@ -8,75 +9,133 @@ def get_cpu_usage():
 
 
 def get_memory_usage():
-    memory = psutil.virtual_memory()
-    return memory.percent
+    return psutil.virtual_memory().percent
 
 
 def get_disk_usage():
-    disk = psutil.disk_usage("/")
-    return disk.percent
+    return psutil.disk_usage("/").percent
 
 
-def get_status(cpu, memory, disk):
-    if cpu >= 90 or memory >= 90 or disk >= 90:
+def get_status(cpu, memory, disk, warning_threshold=75.0, critical_threshold=90.0):
+    highest_usage = max(cpu, memory, disk)
+
+    if highest_usage >= critical_threshold:
         return "CRITICAL"
-    elif cpu >= 75 or memory >= 75 or disk >= 75:
+    if highest_usage >= warning_threshold:
         return "WARNING"
-    else:
-        return "HEALTHY"
+    return "HEALTHY"
+
+
+def collect_metrics(warning_threshold=75.0, critical_threshold=90.0):
+    cpu = get_cpu_usage()
+    memory = get_memory_usage()
+    disk = get_disk_usage()
+
+    return {
+        "cpu": cpu,
+        "memory": memory,
+        "disk": disk,
+        "status": get_status(
+            cpu,
+            memory,
+            disk,
+            warning_threshold,
+            critical_threshold,
+        ),
+    }
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Lightweight Linux system monitoring tool."
     )
-    parser.add_argument(
+    metric_group = parser.add_mutually_exclusive_group()
+    metric_group.add_argument(
         "--cpu",
         action="store_true",
         help="Show CPU usage only.",
     )
-    parser.add_argument(
+    metric_group.add_argument(
         "--memory",
         action="store_true",
         help="Show memory usage only.",
     )
-    parser.add_argument(
+    metric_group.add_argument(
         "--disk",
         action="store_true",
         help="Show disk usage only.",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output all metrics as JSON.",
+    )
+    parser.add_argument(
+        "--warning",
+        type=float,
+        default=75.0,
+        metavar="PERCENT",
+        help="Warning threshold in percent (default: 75).",
+    )
+    parser.add_argument(
+        "--critical",
+        type=float,
+        default=90.0,
+        metavar="PERCENT",
+        help="Critical threshold in percent (default: 90).",
+    )
     return parser.parse_args()
+
+
+def validate_thresholds(warning_threshold, critical_threshold):
+    if not 0 <= warning_threshold <= 100:
+        raise ValueError("warning threshold must be between 0 and 100")
+    if not 0 <= critical_threshold <= 100:
+        raise ValueError("critical threshold must be between 0 and 100")
+    if warning_threshold >= critical_threshold:
+        raise ValueError("warning threshold must be lower than critical threshold")
+
+
+def print_metric(label, value):
+    print(f"{label}: {value:.1f} %")
+
+
+def print_human_readable(metrics):
+    print("SERVERWATCH")
+    print("-" * 28)
+    print()
+    print_metric("CPU usage   ", metrics["cpu"])
+    print_metric("Memory usage", metrics["memory"])
+    print_metric("Disk usage  ", metrics["disk"])
+    print()
+    print(f"Status: {metrics['status']}")
 
 
 def main():
     args = parse_arguments()
 
+    try:
+        validate_thresholds(args.warning, args.critical)
+    except ValueError as error:
+        raise SystemExit(f"serverwatch: error: {error}") from error
+
     if args.cpu:
-        print(f"CPU usage: {get_cpu_usage()} %")
+        print_metric("CPU usage", get_cpu_usage())
         return
-
     if args.memory:
-        print(f"Memory usage: {get_memory_usage()} %")
+        print_metric("Memory usage", get_memory_usage())
         return
-
     if args.disk:
-        print(f"Disk usage: {get_disk_usage()} %")
+        print_metric("Disk usage", get_disk_usage())
         return
 
-    cpu = get_cpu_usage()
-    memory = get_memory_usage()
-    disk = get_disk_usage()
+    metrics = collect_metrics(args.warning, args.critical)
 
-    status = get_status(cpu, memory, disk)
+    if args.json:
+        print(json.dumps(metrics, indent=2))
+        return
 
-    print("SERVERWATCH")
-    print("-" * 28)
-    print()
-    print(f"CPU usage:    {cpu} %")
-    print(f"Memory usage: {memory} %")
-    print(f"Disk usage:   {disk} %")
-    print()
-    print(f"Status: {status}")
+    print_human_readable(metrics)
 
 
 if __name__ == "__main__":
