@@ -8,11 +8,16 @@ from serverwatch import (
     EXIT_HEALTHY,
     EXIT_WARNING,
     collect_metrics,
+    format_uptime,
     get_cpu_usage,
     get_disk_usage,
     get_exit_code,
+    get_load_average,
     get_memory_usage,
+    get_network_io,
     get_status,
+    get_system_info,
+    get_uptime_seconds,
     parse_arguments,
     validate_thresholds,
 )
@@ -31,13 +36,7 @@ def test_status_is_critical_at_critical_threshold():
 
 
 def test_custom_thresholds():
-    status = get_status(
-        61,
-        20,
-        30,
-        warning_threshold=60,
-        critical_threshold=80,
-    )
+    status = get_status(61, 20, 30, warning_threshold=60, critical_threshold=80)
     assert status == "WARNING"
 
 
@@ -47,8 +46,7 @@ def test_warning_threshold_must_be_lower_than_critical():
 
 
 @pytest.mark.parametrize(
-    "warning,critical",
-    [(-1, 90), (101, 102), (75, -1), (75, 101)],
+    "warning,critical", [(-1, 90), (101, 102), (75, -1), (75, 101)]
 )
 def test_thresholds_must_be_percentages(warning, critical):
     with pytest.raises(ValueError):
@@ -85,17 +83,63 @@ def test_metric_helpers_use_psutil(monkeypatch):
     assert get_disk_usage() == 56.5
 
 
+def test_extended_metric_helpers(monkeypatch):
+    monkeypatch.setattr(serverwatch.socket, "gethostname", lambda: "test-host")
+    monkeypatch.setattr(serverwatch.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(serverwatch.platform, "release", lambda: "6.0-test")
+    monkeypatch.setattr(serverwatch.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(serverwatch.psutil, "cpu_count", lambda: 8)
+    monkeypatch.setattr(serverwatch.time, "time", lambda: 1000)
+    monkeypatch.setattr(serverwatch.psutil, "boot_time", lambda: 100)
+    monkeypatch.setattr(serverwatch.os, "getloadavg", lambda: (1.0, 0.5, 0.25))
+    counters = type(
+        "Network",
+        (),
+        {
+            "bytes_sent": 100,
+            "bytes_recv": 200,
+            "packets_sent": 10,
+            "packets_recv": 20,
+        },
+    )()
+    monkeypatch.setattr(serverwatch.psutil, "net_io_counters", lambda: counters)
+
+    assert get_system_info()["hostname"] == "test-host"
+    assert get_system_info()["cpu_count"] == 8
+    assert get_uptime_seconds() == 900
+    assert get_load_average() == {"1m": 1.0, "5m": 0.5, "15m": 0.25}
+    assert get_network_io()["bytes_received"] == 200
+    assert format_uptime(90061) == "1d 1h 1m"
+
+
 def test_collect_metrics(monkeypatch):
     monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 10.0)
     monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
     monkeypatch.setattr(serverwatch, "get_disk_usage", lambda: 20.0)
+    monkeypatch.setattr(serverwatch, "get_system_info", lambda: {"hostname": "host"})
+    monkeypatch.setattr(serverwatch, "get_uptime_seconds", lambda: 3600)
+    monkeypatch.setattr(
+        serverwatch,
+        "get_load_average",
+        lambda: {"1m": 1.0, "5m": 0.5, "15m": 0.25},
+    )
+    monkeypatch.setattr(
+        serverwatch,
+        "get_network_io",
+        lambda: {
+            "bytes_sent": 100,
+            "bytes_received": 200,
+            "packets_sent": 10,
+            "packets_received": 20,
+        },
+    )
 
-    assert collect_metrics(75.0, 90.0) == {
-        "cpu": 10.0,
-        "memory": 80.0,
-        "disk": 20.0,
-        "status": "WARNING",
-    }
+    metrics = collect_metrics(75.0, 90.0)
+    assert metrics["cpu"] == 10.0
+    assert metrics["memory"] == 80.0
+    assert metrics["system"]["hostname"] == "host"
+    assert metrics["uptime_seconds"] == 3600
+    assert metrics["status"] == "WARNING"
 
 
 def test_parse_arguments_defaults(monkeypatch):
