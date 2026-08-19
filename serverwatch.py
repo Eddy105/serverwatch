@@ -32,6 +32,7 @@ def main():
     status = get_status(cpu, memory, disk)
 
     print("SERVERWATCH")
+    print("-" * 28)
     print()
     print("CPU usage:   ", cpu, "%")
     print("Memory usage:", memory, "%")
