@@ -66,8 +66,12 @@ def parse_arguments():
     metric_group.add_argument(
         "--memory", action="store_true", help="Show memory usage only."
     )
-    metric_group.add_argument("--disk", action="store_true", help="Show disk usage only.")
-    parser.add_argument("--json", action="store_true", help="Output all metrics as JSON.")
+    metric_group.add_argument(
+        "--disk", action="store_true", help="Show disk usage only."
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Output all metrics as JSON."
+    )
     parser.add_argument(
         "--warning",
         type=float,
