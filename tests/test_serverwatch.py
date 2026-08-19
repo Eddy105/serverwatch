@@ -1,6 +1,13 @@
 import pytest
 
-from serverwatch import get_status, validate_thresholds
+from serverwatch import (
+    EXIT_CRITICAL,
+    EXIT_HEALTHY,
+    EXIT_WARNING,
+    get_exit_code,
+    get_status,
+    validate_thresholds,
+)
 
 
 def test_status_is_healthy_below_warning_threshold():
@@ -28,3 +35,15 @@ def test_warning_threshold_must_be_lower_than_critical():
 def test_thresholds_must_be_percentages(warning, critical):
     with pytest.raises(ValueError):
         validate_thresholds(warning, critical)
+
+
+@pytest.mark.parametrize(
+    "status,expected",
+    [
+        ("HEALTHY", EXIT_HEALTHY),
+        ("WARNING", EXIT_WARNING),
+        ("CRITICAL", EXIT_CRITICAL),
+    ],
+)
+def test_exit_codes(status, expected):
+    assert get_exit_code(status) == expected
