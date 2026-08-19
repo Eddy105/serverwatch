@@ -3,6 +3,10 @@ import json
 
 import psutil
 
+EXIT_HEALTHY = 0
+EXIT_WARNING = 1
+EXIT_CRITICAL = 2
+
 
 def get_cpu_usage():
     return psutil.cpu_percent(interval=1)
@@ -24,6 +28,14 @@ def get_status(cpu, memory, disk, warning_threshold=75.0, critical_threshold=90.
     if highest_usage >= warning_threshold:
         return "WARNING"
     return "HEALTHY"
+
+
+def get_exit_code(status):
+    return {
+        "HEALTHY": EXIT_HEALTHY,
+        "WARNING": EXIT_WARNING,
+        "CRITICAL": EXIT_CRITICAL,
+    }[status]
 
 
 def collect_metrics(warning_threshold=75.0, critical_threshold=90.0):
@@ -50,26 +62,12 @@ def parse_arguments():
         description="Lightweight Linux system monitoring tool."
     )
     metric_group = parser.add_mutually_exclusive_group()
+    metric_group.add_argument("--cpu", action="store_true", help="Show CPU usage only.")
     metric_group.add_argument(
-        "--cpu",
-        action="store_true",
-        help="Show CPU usage only.",
+        "--memory", action="store_true", help="Show memory usage only."
     )
-    metric_group.add_argument(
-        "--memory",
-        action="store_true",
-        help="Show memory usage only.",
-    )
-    metric_group.add_argument(
-        "--disk",
-        action="store_true",
-        help="Show disk usage only.",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output all metrics as JSON.",
-    )
+    metric_group.add_argument("--disk", action="store_true", help="Show disk usage only.")
+    parser.add_argument("--json", action="store_true", help="Output all metrics as JSON.")
     parser.add_argument(
         "--warning",
         type=float,
@@ -121,22 +119,23 @@ def main():
 
     if args.cpu:
         print_metric("CPU usage", get_cpu_usage())
-        return
+        return EXIT_HEALTHY
     if args.memory:
         print_metric("Memory usage", get_memory_usage())
-        return
+        return EXIT_HEALTHY
     if args.disk:
         print_metric("Disk usage", get_disk_usage())
-        return
+        return EXIT_HEALTHY
 
     metrics = collect_metrics(args.warning, args.critical)
 
     if args.json:
         print(json.dumps(metrics, indent=2))
-        return
+    else:
+        print_human_readable(metrics)
 
-    print_human_readable(metrics)
+    return get_exit_code(metrics["status"])
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

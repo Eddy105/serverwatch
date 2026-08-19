@@ -8,7 +8,9 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 - Human-readable and JSON output
 - Individual metric flags (`--cpu`, `--memory`, `--disk`)
 - Configurable warning and critical thresholds
-- Automated tests for status logic
+- Monitoring-friendly exit codes
+- Automated tests with GitHub Actions
+- Automated GitHub releases for version tags
 
 ## Requirements
 
@@ -90,6 +92,23 @@ Disk usage  : 51.7 %
 Status: HEALTHY
 ```
 
+## Exit codes
+
+The full system check returns monitoring-friendly process exit codes:
+
+| Code | Status |
+| ---: | --- |
+| 0 | HEALTHY |
+| 1 | WARNING |
+| 2 | CRITICAL |
+
+This makes ServerWatch useful in shell scripts and monitoring automation:
+
+```bash
+serverwatch --warning 70 --critical 90
+echo $?
+```
+
 ## Development
 
 Run the test suite with:
@@ -98,10 +117,16 @@ Run the test suite with:
 pytest
 ```
 
+Pull requests are tested automatically with GitHub Actions.
+
+## Releases
+
+Pushing a semantic version tag such as `v0.3.0` triggers the release workflow. It runs the tests, builds wheel and source distributions, and creates a GitHub Release with generated release notes.
+
 ## Roadmap
 
-Planned next steps include CI with GitHub Actions, structured logging, configuration files, and improved packaging/release automation.
+Planned next steps include a package-oriented source layout, configuration files, structured logging, additional metrics, and remote monitoring capabilities.
 
 ## License
 
-A license will be added before the first public release.
+ServerWatch is released under the MIT License. See `LICENSE`.
