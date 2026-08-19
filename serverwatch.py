@@ -1,5 +1,9 @@
 import argparse
 import json
+import os
+import platform
+import socket
+import time
 
 import psutil
 
@@ -18,6 +22,35 @@ def get_memory_usage():
 
 def get_disk_usage():
     return psutil.disk_usage("/").percent
+
+
+def get_system_info():
+    return {
+        "hostname": socket.gethostname(),
+        "system": platform.system(),
+        "kernel": platform.release(),
+        "architecture": platform.machine(),
+        "cpu_count": psutil.cpu_count(),
+    }
+
+
+def get_uptime_seconds():
+    return max(0, int(time.time() - psutil.boot_time()))
+
+
+def get_load_average():
+    one, five, fifteen = os.getloadavg()
+    return {"1m": one, "5m": five, "15m": fifteen}
+
+
+def get_network_io():
+    counters = psutil.net_io_counters()
+    return {
+        "bytes_sent": counters.bytes_sent,
+        "bytes_received": counters.bytes_recv,
+        "packets_sent": counters.packets_sent,
+        "packets_received": counters.packets_recv,
+    }
 
 
 def get_status(cpu, memory, disk, warning_threshold=75.0, critical_threshold=90.0):
@@ -44,9 +77,13 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0):
     disk = get_disk_usage()
 
     return {
+        "system": get_system_info(),
         "cpu": cpu,
         "memory": memory,
         "disk": disk,
+        "uptime_seconds": get_uptime_seconds(),
+        "load_average": get_load_average(),
+        "network": get_network_io(),
         "status": get_status(
             cpu,
             memory,
@@ -102,13 +139,30 @@ def print_metric(label, value):
     print(f"{label}: {value:.1f} %")
 
 
+def format_uptime(seconds):
+    days, remainder = divmod(seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, _ = divmod(remainder, 60)
+    return f"{days}d {hours}h {minutes}m"
+
+
 def print_human_readable(metrics):
+    system = metrics["system"]
+    load = metrics["load_average"]
+    network = metrics["network"]
+
     print("SERVERWATCH")
     print("-" * 28)
+    print(f"Host:         {system['hostname']}")
+    print(f"Kernel:       {system['kernel']}")
+    print(f"Uptime:       {format_uptime(metrics['uptime_seconds'])}")
     print()
     print_metric("CPU usage   ", metrics["cpu"])
     print_metric("Memory usage", metrics["memory"])
     print_metric("Disk usage  ", metrics["disk"])
+    print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
+    print(f"Network RX:   {network['bytes_received']} bytes")
+    print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
     print(f"Status: {metrics['status']}")
 
