@@ -1,3 +1,5 @@
+import argparse
+
 import psutil
 
 
@@ -24,7 +26,43 @@ def get_status(cpu, memory, disk):
         return "HEALTHY"
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="Lightweight Linux system monitoring tool."
+    )
+    parser.add_argument(
+        "--cpu",
+        action="store_true",
+        help="Show CPU usage only.",
+    )
+    parser.add_argument(
+        "--memory",
+        action="store_true",
+        help="Show memory usage only.",
+    )
+    parser.add_argument(
+        "--disk",
+        action="store_true",
+        help="Show disk usage only.",
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_arguments()
+
+    if args.cpu:
+        print(f"CPU usage: {get_cpu_usage()} %")
+        return
+
+    if args.memory:
+        print(f"Memory usage: {get_memory_usage()} %")
+        return
+
+    if args.disk:
+        print(f"Disk usage: {get_disk_usage()} %")
+        return
+
     cpu = get_cpu_usage()
     memory = get_memory_usage()
     disk = get_disk_usage()
@@ -34,11 +72,11 @@ def main():
     print("SERVERWATCH")
     print("-" * 28)
     print()
-    print("CPU usage:   ", cpu, "%")
-    print("Memory usage:", memory, "%")
-    print("Disk usage:  ", disk, "%")
+    print(f"CPU usage:    {cpu} %")
+    print(f"Memory usage: {memory} %")
+    print(f"Disk usage:   {disk} %")
     print()
-    print("Status:", status)
+    print(f"Status: {status}")
 
 
 if __name__ == "__main__":
