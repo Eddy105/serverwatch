@@ -17,7 +17,11 @@ def test_get_filesystems_collects_mount_usage(monkeypatch):
             {"device": "/dev/sdb1", "mountpoint": "/srv", "fstype": "xfs"},
         )(),
     ]
-    monkeypatch.setattr(serverwatch.psutil, "disk_partitions", lambda all=False: partitions)
+    monkeypatch.setattr(
+        serverwatch.psutil,
+        "disk_partitions",
+        lambda all=False: partitions,
+    )
 
     def disk_usage(path):
         values = {
@@ -72,7 +76,11 @@ def test_get_filesystems_skips_unreadable_mount(monkeypatch):
             {"device": "/dev/sdb1", "mountpoint": "/secret", "fstype": "ext4"},
         )(),
     ]
-    monkeypatch.setattr(serverwatch.psutil, "disk_partitions", lambda all=False: partitions)
+    monkeypatch.setattr(
+        serverwatch.psutil,
+        "disk_partitions",
+        lambda all=False: partitions,
+    )
 
     def disk_usage(path):
         if path == "/secret":
