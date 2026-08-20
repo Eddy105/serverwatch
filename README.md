@@ -6,6 +6,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 
 - CPU, memory, swap, disk, and process count monitoring
 - Filesystem-aware disk checks for arbitrary paths and mount points
+- Aggregate disk I/O counters for read/write activity
 - Host, kernel, architecture, and CPU information
 - System uptime and load averages
 - Aggregate and per-interface network I/O counters
@@ -65,6 +66,7 @@ serverwatch --cpu
 serverwatch --memory
 serverwatch --swap
 serverwatch --disk
+serverwatch --disk-io
 serverwatch --processes
 serverwatch --system
 serverwatch --uptime
@@ -111,6 +113,15 @@ The selected disk path is also included in JSON output:
 ```bash
 serverwatch --disk --disk-path /home --json
 ```
+
+Inspect aggregate disk read/write activity since boot:
+
+```bash
+serverwatch --disk-io
+serverwatch --disk-io --json
+```
+
+Disk I/O output reports aggregate read/write byte totals and operation counts. These counters are informational and do not change the CPU/memory/disk health status.
 
 Inspect aggregate network traffic or a specific Linux network interface:
 
@@ -178,7 +189,7 @@ The full system check and `--status` return monitoring-friendly process exit cod
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully. Swap usage and process count are currently informational and do not change the full health status. An unreadable disk path or unknown requested network interface exits with an error instead of silently checking a different resource.
+Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, and disk I/O counters are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters, or unknown requested network interface exits with an error instead of silently checking a different resource.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
