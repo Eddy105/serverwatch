@@ -66,7 +66,6 @@ socket = collectors.socket
 psutil = collectors.psutil
 time = collectors.time
 
-
 parse_arguments = _cli.parse_arguments
 validate_thresholds = _cli.validate_thresholds
 
@@ -113,6 +112,11 @@ def main():
         "get_network_io",
         "get_status",
         "get_exit_code",
+        "get_selected_metric",
+        "print_metric",
+        "format_uptime",
+        "print_selected_metric",
+        "print_human_readable",
     )
     for name in names:
         setattr(_cli, name, globals()[name])
