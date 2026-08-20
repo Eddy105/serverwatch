@@ -123,19 +123,31 @@ def get_selected_metric(args):
         network_getter = partial(get_network_io, args.network_interface)
 
     selectors = (
-        ("cpu", args.cpu, get_cpu_usage),
-        ("memory", args.memory, get_memory_usage),
-        ("swap", args.swap, get_swap_usage),
-        ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
-        ("filesystems", args.filesystems, get_filesystems),
-        ("inodes", args.inodes, partial(get_inode_usage, args.disk_path)),
-        ("disk_io", args.disk_io, get_disk_io),
-        ("temperatures", args.temperatures, get_temperatures),
-        ("processes", args.processes, get_process_count),
-        ("system", args.system, get_system_info),
-        ("uptime_seconds", args.uptime, get_uptime_seconds),
-        ("load_average", args.load, get_load_average),
-        ("network", args.network, network_getter),
+        ("cpu", getattr(args, "cpu", False), get_cpu_usage),
+        ("memory", getattr(args, "memory", False), get_memory_usage),
+        ("swap", getattr(args, "swap", False), get_swap_usage),
+        (
+            "disk",
+            getattr(args, "disk", False),
+            lambda: get_disk_usage(args.disk_path),
+        ),
+        ("filesystems", getattr(args, "filesystems", False), get_filesystems),
+        (
+            "inodes",
+            getattr(args, "inodes", False),
+            partial(get_inode_usage, args.disk_path),
+        ),
+        ("disk_io", getattr(args, "disk_io", False), get_disk_io),
+        (
+            "temperatures",
+            getattr(args, "temperatures", False),
+            get_temperatures,
+        ),
+        ("processes", getattr(args, "processes", False), get_process_count),
+        ("system", getattr(args, "system", False), get_system_info),
+        ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
+        ("load_average", getattr(args, "load", False), get_load_average),
+        ("network", getattr(args, "network", False), network_getter),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -253,13 +265,15 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not args.network:
+    if getattr(args, "network_interface", None) and not getattr(
+        args, "network", False
+    ):
         raise SystemExit(
             "serverwatch: error: --network-interface requires --network"
         )
 
     try:
-        if args.status:
+        if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
             if args.json:
                 print(json.dumps({"status": metrics["status"]}, indent=2))
@@ -275,7 +289,7 @@ def main():
                 value,
                 args.json,
                 args.disk_path,
-                args.network_interface,
+                getattr(args, "network_interface", None),
             )
             return EXIT_HEALTHY
 
