@@ -33,6 +33,7 @@ __all__ = (
     "EXIT_CRITICAL",
     "EXIT_HEALTHY",
     "EXIT_WARNING",
+    "collect_for_args",
     "collect_metrics",
     "format_uptime",
     "get_cpu_usage",
@@ -56,6 +57,8 @@ __all__ = (
     "print_human_readable",
     "print_metric",
     "print_selected_metric",
+    "run_watch",
+    "validate_interval",
     "validate_thresholds",
 )
 
@@ -68,6 +71,7 @@ time = collectors.time
 
 parse_arguments = _cli.parse_arguments
 validate_thresholds = _cli.validate_thresholds
+validate_interval = _cli.validate_interval
 
 
 def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="/"):
@@ -85,7 +89,9 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
-        "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
+        "status": get_status(
+            cpu, memory, disk, warning_threshold, critical_threshold
+        ),
     }
 
 
@@ -94,6 +100,7 @@ def main():
     names = (
         "parse_arguments",
         "validate_thresholds",
+        "validate_interval",
         "collect_metrics",
         "get_cpu_usage",
         "get_memory_usage",
@@ -115,6 +122,8 @@ def main():
         "format_uptime",
         "print_selected_metric",
         "print_human_readable",
+        "collect_for_args",
+        "run_watch",
     )
     for name in names:
         setattr(_cli, name, globals()[name])
@@ -126,3 +135,5 @@ format_uptime = _cli.format_uptime
 get_selected_metric = _cli.get_selected_metric
 print_selected_metric = _cli.print_selected_metric
 print_human_readable = _cli.print_human_readable
+collect_for_args = _cli.collect_for_args
+run_watch = _cli.run_watch
