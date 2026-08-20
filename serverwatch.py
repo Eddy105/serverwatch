@@ -21,6 +21,10 @@ class DiskIoUnavailableError(ValueError):
     pass
 
 
+class TemperatureUnavailableError(ValueError):
+    pass
+
+
 def get_cpu_usage():
     return psutil.cpu_percent(interval=1)
 
@@ -69,6 +73,31 @@ def get_disk_io():
         "read_bytes": counters.read_bytes,
         "write_bytes": counters.write_bytes,
     }
+
+
+def get_temperatures():
+    sensor_getter = getattr(psutil, "sensors_temperatures", None)
+    if sensor_getter is None:
+        raise TemperatureUnavailableError("temperature sensors are not supported")
+
+    sensor_groups = sensor_getter()
+    readings = []
+    for chip, sensors in sensor_groups.items():
+        for sensor in sensors:
+            readings.append(
+                {
+                    "chip": chip,
+                    "label": sensor.label or chip,
+                    "current": sensor.current,
+                    "high": sensor.high,
+                    "critical": sensor.critical,
+                }
+            )
+
+    if not readings:
+        raise TemperatureUnavailableError("temperature sensors are not available")
+
+    return readings
 
 
 def get_process_count():
@@ -184,6 +213,9 @@ def parse_arguments():
         "--disk-io", action="store_true", help="Show aggregate disk I/O counters only."
     )
     metric_group.add_argument(
+        "--temperatures", action="store_true", help="Show hardware temperatures only."
+    )
+    metric_group.add_argument(
         "--processes", action="store_true", help="Show process count only."
     )
     metric_group.add_argument(
@@ -266,6 +298,7 @@ def get_selected_metric(args):
             partial(get_inode_usage, args.disk_path),
         ),
         ("disk_io", getattr(args, "disk_io", False), get_disk_io),
+        ("temperatures", getattr(args, "temperatures", False), get_temperatures),
         ("processes", args.processes, get_process_count),
         ("system", args.system, get_system_info),
         ("uptime_seconds", args.uptime, get_uptime_seconds),
@@ -315,6 +348,18 @@ def print_selected_metric(
         print(f"Disk write:  {value['write_bytes']} bytes")
         print(f"Read ops:    {value['read_count']}")
         print(f"Write ops:   {value['write_count']}")
+    elif name == "temperatures":
+        for sensor in value:
+            limits = []
+            if sensor["high"] is not None:
+                limits.append(f"high {sensor['high']:.1f} °C")
+            if sensor["critical"] is not None:
+                limits.append(f"critical {sensor['critical']:.1f} °C")
+            suffix = f" ({', '.join(limits)})" if limits else ""
+            print(
+                f"{sensor['chip']}/{sensor['label']}: "
+                f"{sensor['current']:.1f} °C{suffix}"
+            )
     elif name == "processes":
         print(f"Processes: {value}")
     elif name == "system":
@@ -393,6 +438,8 @@ def main():
 
         metrics = collect_metrics(args.warning, args.critical, args.disk_path)
     except DiskIoUnavailableError as error:
+        raise SystemExit(f"serverwatch: error: {error}") from error
+    except TemperatureUnavailableError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
     except NetworkInterfaceError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
