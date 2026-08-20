@@ -106,8 +106,20 @@ def parse_arguments():
     metric_group.add_argument(
         "--disk", action="store_true", help="Show disk usage only."
     )
+    metric_group.add_argument(
+        "--system", action="store_true", help="Show host and system information only."
+    )
+    metric_group.add_argument(
+        "--uptime", action="store_true", help="Show system uptime only."
+    )
+    metric_group.add_argument(
+        "--load", action="store_true", help="Show load averages only."
+    )
+    metric_group.add_argument(
+        "--network", action="store_true", help="Show network I/O counters only."
+    )
     parser.add_argument(
-        "--json", action="store_true", help="Output all metrics as JSON."
+        "--json", action="store_true", help="Output metrics as JSON."
     )
     parser.add_argument(
         "--warning",
@@ -146,6 +158,51 @@ def format_uptime(seconds):
     return f"{days}d {hours}h {minutes}m"
 
 
+def get_selected_metric(args):
+    selectors = (
+        ("cpu", args.cpu, get_cpu_usage),
+        ("memory", args.memory, get_memory_usage),
+        ("disk", args.disk, get_disk_usage),
+        ("system", args.system, get_system_info),
+        ("uptime_seconds", args.uptime, get_uptime_seconds),
+        ("load_average", args.load, get_load_average),
+        ("network", args.network, get_network_io),
+    )
+
+    for name, enabled, getter in selectors:
+        if enabled:
+            return name, getter()
+    return None
+
+
+def print_selected_metric(name, value, json_output=False):
+    if json_output:
+        print(json.dumps({name: value}, indent=2))
+        return
+
+    if name == "cpu":
+        print_metric("CPU usage", value)
+    elif name == "memory":
+        print_metric("Memory usage", value)
+    elif name == "disk":
+        print_metric("Disk usage", value)
+    elif name == "system":
+        print(f"Hostname:     {value['hostname']}")
+        print(f"System:       {value['system']}")
+        print(f"Kernel:       {value['kernel']}")
+        print(f"Architecture: {value['architecture']}")
+        print(f"CPU count:    {value['cpu_count']}")
+    elif name == "uptime_seconds":
+        print(f"Uptime: {format_uptime(value)}")
+    elif name == "load_average":
+        print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
+    elif name == "network":
+        print(f"Network RX: {value['bytes_received']} bytes")
+        print(f"Network TX: {value['bytes_sent']} bytes")
+        print(f"Packets RX: {value['packets_received']}")
+        print(f"Packets TX: {value['packets_sent']}")
+
+
 def print_human_readable(metrics):
     system = metrics["system"]
     load = metrics["load_average"]
@@ -175,14 +232,10 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if args.cpu:
-        print_metric("CPU usage", get_cpu_usage())
-        return EXIT_HEALTHY
-    if args.memory:
-        print_metric("Memory usage", get_memory_usage())
-        return EXIT_HEALTHY
-    if args.disk:
-        print_metric("Disk usage", get_disk_usage())
+    selected_metric = get_selected_metric(args)
+    if selected_metric is not None:
+        name, value = selected_metric
+        print_selected_metric(name, value, args.json)
         return EXIT_HEALTHY
 
     metrics = collect_metrics(args.warning, args.critical)
