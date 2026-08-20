@@ -23,6 +23,7 @@ get_system_info = collectors.get_system_info
 get_uptime_seconds = collectors.get_uptime_seconds
 get_load_average = collectors.get_load_average
 get_network_io = collectors.get_network_io
+get_network_status = collectors.get_network_status
 
 
 def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="/"):
@@ -40,6 +41,7 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
+        "network_status": get_network_status(),
         "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
     }
 
@@ -63,6 +65,7 @@ def parse_arguments():
         ("--uptime", "Show system uptime only."),
         ("--load", "Show load averages only."),
         ("--network", "Show network I/O counters only."),
+        ("--network-status", "Show network interface link status only."),
         ("--status", "Show health status only."),
     )
     for option, help_text in metric_options:
@@ -162,6 +165,11 @@ def get_selected_metric(args):
         ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
         ("load_average", getattr(args, "load", False), get_load_average),
         ("network", getattr(args, "network", False), network_getter),
+        (
+            "network_status",
+            getattr(args, "network_status", False),
+            get_network_status,
+        ),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -240,6 +248,14 @@ def print_selected_metric(
         print(f"Network TX{suffix}: {value['bytes_sent']} bytes")
         print(f"Packets RX{suffix}: {value['packets_received']}")
         print(f"Packets TX{suffix}: {value['packets_sent']}")
+    elif name == "network_status":
+        for interface in value:
+            state = "UP" if interface["is_up"] else "DOWN"
+            print(
+                f"{interface['interface']}: {state} "
+                f"{interface['speed_mbps']} Mbps, "
+                f"MTU {interface['mtu']}"
+            )
 
 
 def print_human_readable(metrics):
@@ -337,7 +353,3 @@ def main():
         raise SystemExit(
             f"serverwatch: error: cannot read disk path {args.disk_path!r}: {error}"
         ) from error
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

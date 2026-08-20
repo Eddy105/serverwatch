@@ -144,3 +144,18 @@ def get_network_io(interface=None):
         "packets_sent": counters.packets_sent,
         "packets_received": counters.packets_recv,
     }
+
+
+def get_network_status():
+    """Return operational state and link information for network interfaces."""
+    stats = psutil.net_if_stats()
+    return [
+        {
+            "interface": interface,
+            "is_up": info.isup,
+            "speed_mbps": info.speed,
+            "duplex": str(info.duplex),
+            "mtu": info.mtu,
+        }
+        for interface, info in sorted(stats.items())
+    ]

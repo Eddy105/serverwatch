@@ -12,6 +12,7 @@ from .collectors import (
     get_load_average,
     get_memory_usage,
     get_network_io,
+    get_network_status,
     get_process_count,
     get_swap_usage,
     get_system_info,
@@ -45,6 +46,7 @@ __all__ = (
     "get_load_average",
     "get_memory_usage",
     "get_network_io",
+    "get_network_status",
     "get_process_count",
     "get_selected_metric",
     "get_status",
@@ -89,6 +91,7 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
+        "network_status": get_network_status(),
         "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
     }
 
@@ -115,6 +118,7 @@ def main():
             "get_uptime_seconds",
             "get_load_average",
             "get_network_io",
+            "get_network_status",
             "get_status",
             "get_exit_code",
             "get_selected_metric",
@@ -133,6 +137,8 @@ def main():
             args.interval = 5.0
         if not hasattr(args, "watch"):
             args.watch = False
+        if not hasattr(args, "network_status"):
+            args.network_status = False
         return args
 
     try:
