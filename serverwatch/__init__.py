@@ -89,55 +89,61 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
-        "status": get_status(
-            cpu, memory, disk, warning_threshold, critical_threshold
-        ),
+        "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
     }
 
 
 def main():
     # Keep the historical top-level API patchable for integrations and tests.
-    original_parse_arguments = parse_arguments
+    original_parse_arguments = _cli.parse_arguments
+    original_functions = {
+        name: getattr(_cli, name)
+        for name in (
+            "validate_thresholds",
+            "validate_interval",
+            "collect_metrics",
+            "get_cpu_usage",
+            "get_memory_usage",
+            "get_swap_usage",
+            "get_disk_usage",
+            "get_filesystems",
+            "get_inode_usage",
+            "get_disk_io",
+            "get_temperatures",
+            "get_process_count",
+            "get_system_info",
+            "get_uptime_seconds",
+            "get_load_average",
+            "get_network_io",
+            "get_status",
+            "get_exit_code",
+            "get_selected_metric",
+            "print_metric",
+            "format_uptime",
+            "print_selected_metric",
+            "print_human_readable",
+            "collect_for_args",
+            "run_watch",
+        )
+    }
 
     def parse_arguments_compat():
-        args = original_parse_arguments()
+        args = parse_arguments()
         if not hasattr(args, "interval"):
             args.interval = 5.0
         if not hasattr(args, "watch"):
             args.watch = False
         return args
 
-    names = (
-        "validate_thresholds",
-        "validate_interval",
-        "collect_metrics",
-        "get_cpu_usage",
-        "get_memory_usage",
-        "get_swap_usage",
-        "get_disk_usage",
-        "get_filesystems",
-        "get_inode_usage",
-        "get_disk_io",
-        "get_temperatures",
-        "get_process_count",
-        "get_system_info",
-        "get_uptime_seconds",
-        "get_load_average",
-        "get_network_io",
-        "get_status",
-        "get_exit_code",
-        "get_selected_metric",
-        "print_metric",
-        "format_uptime",
-        "print_selected_metric",
-        "print_human_readable",
-        "collect_for_args",
-        "run_watch",
-    )
-    for name in names:
-        setattr(_cli, name, globals()[name])
-    _cli.parse_arguments = parse_arguments_compat
-    return _cli.main()
+    try:
+        for name in original_functions:
+            setattr(_cli, name, globals()[name])
+        _cli.parse_arguments = parse_arguments_compat
+        return _cli.main()
+    finally:
+        _cli.parse_arguments = original_parse_arguments
+        for name, function in original_functions.items():
+            setattr(_cli, name, function)
 
 
 print_metric = _cli.print_metric
