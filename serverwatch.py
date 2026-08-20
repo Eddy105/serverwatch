@@ -1,10 +1,10 @@
 import argparse
-from functools import partial
 import json
 import os
 import platform
 import socket
 import time
+from functools import partial
 
 import psutil
 
