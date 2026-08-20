@@ -15,6 +15,7 @@ from serverwatch import (
     get_load_average,
     get_memory_usage,
     get_network_io,
+    get_process_count,
     get_status,
     get_swap_usage,
     get_system_info,
@@ -82,6 +83,7 @@ def test_metric_helpers_use_psutil(monkeypatch):
             {"total": 1000, "used": 250, "free": 750, "percent": 25.0},
         )(),
     )
+    monkeypatch.setattr(serverwatch.psutil, "pids", lambda: [1, 2, 3, 4])
     disk_paths = []
 
     def disk_usage(path):
@@ -98,6 +100,7 @@ def test_metric_helpers_use_psutil(monkeypatch):
         "free": 750,
         "percent": 25.0,
     }
+    assert get_process_count() == 4
     assert get_disk_usage("/var") == 56.5
     assert disk_paths == ["/var"]
 
@@ -140,6 +143,7 @@ def test_collect_metrics(monkeypatch):
         lambda: {"total": 1000, "used": 100, "free": 900, "percent": 10.0},
     )
     monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 20.0)
+    monkeypatch.setattr(serverwatch, "get_process_count", lambda: 42)
     monkeypatch.setattr(serverwatch, "get_system_info", lambda: {"hostname": "host"})
     monkeypatch.setattr(serverwatch, "get_uptime_seconds", lambda: 3600)
     monkeypatch.setattr(
@@ -164,6 +168,7 @@ def test_collect_metrics(monkeypatch):
     assert metrics["swap"]["percent"] == 10.0
     assert metrics["disk"] == 20.0
     assert metrics["disk_path"] == "/srv"
+    assert metrics["processes"] == 42
     assert metrics["system"]["hostname"] == "host"
     assert metrics["uptime_seconds"] == 3600
     assert metrics["status"] == "WARNING"
@@ -180,6 +185,7 @@ def test_parse_arguments_defaults(monkeypatch):
     assert not args.memory
     assert not args.swap
     assert not args.disk
+    assert not args.processes
     assert not args.json
 
 
