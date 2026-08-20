@@ -145,6 +145,9 @@ def parse_arguments():
     metric_group.add_argument(
         "--network", action="store_true", help="Show network I/O counters only."
     )
+    metric_group.add_argument(
+        "--status", action="store_true", help="Show health status only."
+    )
     parser.add_argument("--json", action="store_true", help="Output metrics as JSON.")
     parser.add_argument(
         "--disk-path",
@@ -278,6 +281,14 @@ def main():
         raise SystemExit(f"serverwatch: error: {error}") from error
 
     try:
+        if getattr(args, "status", False):
+            metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+            if args.json:
+                print(json.dumps({"status": metrics["status"]}, indent=2))
+            else:
+                print(metrics["status"])
+            return get_exit_code(metrics["status"])
+
         selected_metric = get_selected_metric(args)
         if selected_metric is not None:
             name, value = selected_metric

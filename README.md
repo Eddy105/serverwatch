@@ -11,6 +11,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 - Network I/O counters
 - Human-readable and JSON output
 - Individual metric selectors
+- Focused health-status output for scripts and monitoring checks
 - Configurable warning and critical thresholds
 - Monitoring-friendly exit codes
 - Automated tests with GitHub Actions
@@ -69,6 +70,19 @@ serverwatch --system
 serverwatch --uptime
 serverwatch --load
 serverwatch --network
+```
+
+Return only the current health state while preserving monitoring exit codes:
+
+```bash
+serverwatch --status
+serverwatch --status --json
+```
+
+`--status` evaluates the same CPU, memory, and disk thresholds as the full system check. It prints only `HEALTHY`, `WARNING`, or `CRITICAL` and exits with code `0`, `1`, or `2` respectively. Custom thresholds and disk paths still apply:
+
+```bash
+serverwatch --status --disk-path /var --warning 70 --critical 90
 ```
 
 Process count is informational and is available in both human-readable and JSON output:
@@ -146,7 +160,7 @@ Status: HEALTHY
 
 ## Exit codes
 
-The full system check returns monitoring-friendly process exit codes:
+The full system check and `--status` return monitoring-friendly process exit codes:
 
 | Code | Status |
 | ---: | --- |
@@ -159,7 +173,7 @@ Single-metric selectors return `0` when the metric was collected successfully. S
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
 ```bash
-serverwatch --disk-path /var --warning 70 --critical 90
+serverwatch --status --disk-path /var --warning 70 --critical 90
 echo $?
 ```
 
