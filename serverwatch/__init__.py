@@ -85,9 +85,7 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
-        "status": get_status(
-            cpu, memory, disk, warning_threshold, critical_threshold
-        ),
+        "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
     }
 
 
