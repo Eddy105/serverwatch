@@ -20,8 +20,8 @@ def get_memory_usage():
     return psutil.virtual_memory().percent
 
 
-def get_disk_usage():
-    return psutil.disk_usage("/").percent
+def get_disk_usage(path="/"):
+    return psutil.disk_usage(path).percent
 
 
 def get_system_info():
@@ -71,16 +71,21 @@ def get_exit_code(status):
     }[status]
 
 
-def collect_metrics(warning_threshold=75.0, critical_threshold=90.0):
+def collect_metrics(
+    warning_threshold=75.0,
+    critical_threshold=90.0,
+    disk_path="/",
+):
     cpu = get_cpu_usage()
     memory = get_memory_usage()
-    disk = get_disk_usage()
+    disk = get_disk_usage(disk_path)
 
     return {
         "system": get_system_info(),
         "cpu": cpu,
         "memory": memory,
         "disk": disk,
+        "disk_path": disk_path,
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
@@ -119,6 +124,12 @@ def parse_arguments():
         "--network", action="store_true", help="Show network I/O counters only."
     )
     parser.add_argument("--json", action="store_true", help="Output metrics as JSON.")
+    parser.add_argument(
+        "--disk-path",
+        default="/",
+        metavar="PATH",
+        help="Filesystem path used for disk usage checks (default: /).",
+    )
     parser.add_argument(
         "--warning",
         type=float,
@@ -160,7 +171,7 @@ def get_selected_metric(args):
     selectors = (
         ("cpu", args.cpu, get_cpu_usage),
         ("memory", args.memory, get_memory_usage),
-        ("disk", args.disk, get_disk_usage),
+        ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
         ("system", args.system, get_system_info),
         ("uptime_seconds", args.uptime, get_uptime_seconds),
         ("load_average", args.load, get_load_average),
@@ -173,9 +184,12 @@ def get_selected_metric(args):
     return None
 
 
-def print_selected_metric(name, value, json_output=False):
+def print_selected_metric(name, value, json_output=False, disk_path="/"):
     if json_output:
-        print(json.dumps({name: value}, indent=2))
+        payload = {name: value}
+        if name == "disk":
+            payload["disk_path"] = disk_path
+        print(json.dumps(payload, indent=2))
         return
 
     if name == "cpu":
@@ -183,7 +197,7 @@ def print_selected_metric(name, value, json_output=False):
     elif name == "memory":
         print_metric("Memory usage", value)
     elif name == "disk":
-        print_metric("Disk usage", value)
+        print_metric(f"Disk usage ({disk_path})", value)
     elif name == "system":
         print(f"Hostname:     {value['hostname']}")
         print(f"System:       {value['system']}")
@@ -214,7 +228,7 @@ def print_human_readable(metrics):
     print()
     print_metric("CPU usage   ", metrics["cpu"])
     print_metric("Memory usage", metrics["memory"])
-    print_metric("Disk usage  ", metrics["disk"])
+    print_metric(f"Disk usage ({metrics['disk_path']})", metrics["disk"])
     print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
@@ -230,13 +244,18 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    selected_metric = get_selected_metric(args)
-    if selected_metric is not None:
-        name, value = selected_metric
-        print_selected_metric(name, value, args.json)
-        return EXIT_HEALTHY
+    try:
+        selected_metric = get_selected_metric(args)
+        if selected_metric is not None:
+            name, value = selected_metric
+            print_selected_metric(name, value, args.json, args.disk_path)
+            return EXIT_HEALTHY
 
-    metrics = collect_metrics(args.warning, args.critical)
+        metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+    except OSError as error:
+        raise SystemExit(
+            f"serverwatch: error: cannot read disk path {args.disk_path!r}: {error}"
+        ) from error
 
     if args.json:
         print(json.dumps(metrics, indent=2))
