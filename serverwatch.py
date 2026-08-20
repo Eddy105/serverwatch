@@ -118,9 +118,7 @@ def parse_arguments():
     metric_group.add_argument(
         "--network", action="store_true", help="Show network I/O counters only."
     )
-    parser.add_argument(
-        "--json", action="store_true", help="Output metrics as JSON."
-    )
+    parser.add_argument("--json", action="store_true", help="Output metrics as JSON.")
     parser.add_argument(
         "--warning",
         type=float,
