@@ -1,5 +1,6 @@
 import argparse
 import json
+import time
 from functools import partial
 
 from . import collectors
@@ -68,6 +69,16 @@ def parse_arguments():
         metric_group.add_argument(option, action="store_true", help=help_text)
     parser.add_argument("--json", action="store_true", help="Output metrics as JSON.")
     parser.add_argument(
+        "--watch", action="store_true", help="Continuously refresh the selected view."
+    )
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=5.0,
+        metavar="SECONDS",
+        help="Refresh interval for --watch (default: 5).",
+    )
+    parser.add_argument(
         "--disk-path",
         default="/",
         metavar="PATH",
@@ -102,6 +113,11 @@ def validate_thresholds(warning_threshold, critical_threshold):
         raise ValueError("critical threshold must be between 0 and 100")
     if warning_threshold >= critical_threshold:
         raise ValueError("warning threshold must be lower than critical threshold")
+
+
+def validate_interval(interval):
+    if interval <= 0:
+        raise ValueError("watch interval must be greater than 0")
 
 
 def print_metric(label, value):
@@ -217,7 +233,10 @@ def print_selected_metric(
     elif name == "uptime_seconds":
         print(f"Uptime: {format_uptime(value)}")
     elif name == "load_average":
-        print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
+        print(
+            f"Load average: {value['1m']:.2f} "
+            f"{value['5m']:.2f} {value['15m']:.2f}"
+        )
     elif name == "network":
         suffix = f" ({network_interface})" if network_interface else ""
         print(f"Network RX{suffix}: {value['bytes_received']} bytes")
@@ -243,21 +262,64 @@ def print_human_readable(metrics):
     print_metric("Memory usage", metrics["memory"])
     print_metric("Swap usage  ", swap["percent"])
     print_metric(f"Disk usage ({metrics['disk_path']})", metrics["disk"])
-    print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
+    print(
+        f"Load average: {load['1m']:.2f} "
+        f"{load['5m']:.2f} {load['15m']:.2f}"
+    )
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
     print(f"Status: {metrics['status']}")
 
 
+def collect_for_args(args):
+    selected_metric = get_selected_metric(args)
+    if selected_metric is not None:
+        name, value = selected_metric
+        print_selected_metric(
+            name,
+            value,
+            args.json,
+            args.disk_path,
+            getattr(args, "network_interface", None),
+        )
+        return EXIT_HEALTHY
+
+    metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+    if args.json:
+        print(json.dumps(metrics, indent=2))
+    else:
+        print_human_readable(metrics)
+    return get_exit_code(metrics["status"])
+
+
+def run_watch(args):
+    if args.json:
+        raise ValueError("--watch cannot be combined with --json")
+
+    last_exit_code = EXIT_HEALTHY
+    try:
+        while True:
+            print("\033[2J\033[H", end="")
+            last_exit_code = collect_for_args(args)
+            print(f"\nRefreshing every {args.interval:g}s. Press Ctrl+C to stop.")
+            time.sleep(args.interval)
+    except KeyboardInterrupt:
+        print("\nWatch stopped.")
+    return last_exit_code
+
+
 def main():
     args = parse_arguments()
     try:
         validate_thresholds(args.warning, args.critical)
+        validate_interval(args.interval)
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
+    if getattr(args, "network_interface", None) and not getattr(
+        args, "network", False
+    ):
         raise SystemExit("serverwatch: error: --network-interface requires --network")
 
     try:
@@ -269,19 +331,10 @@ def main():
                 print(metrics["status"])
             return get_exit_code(metrics["status"])
 
-        selected_metric = get_selected_metric(args)
-        if selected_metric is not None:
-            name, value = selected_metric
-            print_selected_metric(
-                name,
-                value,
-                args.json,
-                args.disk_path,
-                getattr(args, "network_interface", None),
-            )
-            return EXIT_HEALTHY
+        if args.watch:
+            return run_watch(args)
 
-        metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+        return collect_for_args(args)
     except (
         DiskIoUnavailableError,
         TemperatureUnavailableError,
@@ -290,11 +343,10 @@ def main():
         raise SystemExit(f"serverwatch: error: {error}") from error
     except OSError as error:
         raise SystemExit(
-            f"serverwatch: error: cannot read disk path {args.disk_path!r}: {error}"
+            f"serverwatch: error: cannot read disk path "
+            f"{args.disk_path!r}: {error}"
         ) from error
 
-    if args.json:
-        print(json.dumps(metrics, indent=2))
-    else:
-        print_human_readable(metrics)
-    return get_exit_code(metrics["status"])
+
+if __name__ == "__main__":
+    raise SystemExit(main())
