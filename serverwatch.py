@@ -1,4 +1,5 @@
 import argparse
+from functools import partial
 import json
 import os
 import platform
@@ -214,7 +215,7 @@ def format_uptime(seconds):
 def get_selected_metric(args):
     network_getter = get_network_io
     if getattr(args, "network_interface", None):
-        network_getter = lambda: get_network_io(args.network_interface)
+        network_getter = partial(get_network_io, args.network_interface)
 
     selectors = (
         ("cpu", args.cpu, get_cpu_usage),
