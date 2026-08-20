@@ -47,6 +47,27 @@ def get_disk_usage(path="/"):
     return psutil.disk_usage(path).percent
 
 
+def get_filesystems():
+    filesystems = []
+    for partition in psutil.disk_partitions(all=False):
+        try:
+            usage = psutil.disk_usage(partition.mountpoint)
+        except OSError:
+            continue
+        filesystems.append(
+            {
+                "device": partition.device,
+                "mountpoint": partition.mountpoint,
+                "fstype": partition.fstype,
+                "total": usage.total,
+                "used": usage.used,
+                "free": usage.free,
+                "percent": usage.percent,
+            }
+        )
+    return filesystems
+
+
 def get_inode_usage(path="/"):
     stats = os.statvfs(path)
     total = stats.f_files
@@ -207,6 +228,11 @@ def parse_arguments():
         "--disk", action="store_true", help="Show disk usage only."
     )
     metric_group.add_argument(
+        "--filesystems",
+        action="store_true",
+        help="Show mounted filesystem usage only.",
+    )
+    metric_group.add_argument(
         "--inodes", action="store_true", help="Show inode usage for --disk-path only."
     )
     metric_group.add_argument(
@@ -292,6 +318,7 @@ def get_selected_metric(args):
         ("memory", args.memory, get_memory_usage),
         ("swap", args.swap, get_swap_usage),
         ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
+        ("filesystems", getattr(args, "filesystems", False), get_filesystems),
         (
             "inodes",
             getattr(args, "inodes", False),
@@ -338,6 +365,14 @@ def print_selected_metric(
         print(f"Swap total: {value['total']} bytes")
     elif name == "disk":
         print_metric(f"Disk usage ({disk_path})", value)
+    elif name == "filesystems":
+        for filesystem in value:
+            device = filesystem["device"] or "-"
+            fstype = filesystem["fstype"] or "unknown"
+            print(
+                f"{filesystem['mountpoint']}: {filesystem['percent']:.1f} % "
+                f"({device}, {fstype}, {filesystem['used']}/{filesystem['total']} bytes)"
+            )
     elif name == "inodes":
         print_metric(f"Inode usage ({disk_path})", value["percent"])
         print(f"Inodes used:  {value['used']}")
