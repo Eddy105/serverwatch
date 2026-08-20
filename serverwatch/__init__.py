@@ -1,17 +1,40 @@
-from . import collectors
-from .cli import *
+from . import cli as _cli
+from .collectors import (
+    DiskIoUnavailableError,
+    NetworkInterfaceError,
+    TemperatureUnavailableError,
+    get_cpu_usage,
+    get_disk_io,
+    get_disk_usage,
+    get_filesystems,
+    get_inode_usage,
+    get_load_average,
+    get_memory_usage,
+    get_network_io,
+    get_process_count,
+    get_swap_usage,
+    get_system_info,
+    get_temperatures,
+    get_uptime_seconds,
+)
+from .health import (
+    EXIT_CRITICAL,
+    EXIT_HEALTHY,
+    EXIT_WARNING,
+    get_exit_code,
+    get_status,
+)
 
-# Compatibility exports for existing integrations and tests that patch the
-# collector dependencies through the top-level `serverwatch` module.
-os = collectors.os
-platform = collectors.platform
-psutil = collectors.psutil
-socket = collectors.socket
-time = collectors.time
+
+def parse_arguments():
+    return _cli.parse_arguments()
+
+
+def validate_thresholds(warning_threshold, critical_threshold):
+    return _cli.validate_thresholds(warning_threshold, critical_threshold)
 
 
 def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="/"):
-    """Collect the complete metric snapshot using top-level dependencies."""
     cpu = get_cpu_usage()
     memory = get_memory_usage()
     disk = get_disk_usage(disk_path)
@@ -30,3 +53,35 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
             cpu, memory, disk, warning_threshold, critical_threshold
         ),
     }
+
+
+def main():
+    # Keep the historical top-level API patchable for integrations and tests.
+    names = (
+        "parse_arguments",
+        "validate_thresholds",
+        "collect_metrics",
+        "get_cpu_usage",
+        "get_memory_usage",
+        "get_swap_usage",
+        "get_disk_usage",
+        "get_filesystems",
+        "get_inode_usage",
+        "get_disk_io",
+        "get_temperatures",
+        "get_process_count",
+        "get_system_info",
+        "get_uptime_seconds",
+        "get_load_average",
+        "get_network_io",
+    )
+    for name in names:
+        setattr(_cli, name, globals()[name])
+    return _cli.main()
+
+
+print_metric = _cli.print_metric
+format_uptime = _cli.format_uptime
+get_selected_metric = _cli.get_selected_metric
+print_selected_metric = _cli.print_selected_metric
+print_human_readable = _cli.print_human_readable
