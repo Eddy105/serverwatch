@@ -1,196 +1,33 @@
 import argparse
 import json
-import os
-import platform
-import socket
-import time
 from functools import partial
 
-import psutil
+from . import collectors
+from .health import EXIT_HEALTHY, get_exit_code, get_status
 
-EXIT_HEALTHY = 0
-EXIT_WARNING = 1
-EXIT_CRITICAL = 2
+DiskIoUnavailableError = collectors.DiskIoUnavailableError
+NetworkInterfaceError = collectors.NetworkInterfaceError
+TemperatureUnavailableError = collectors.TemperatureUnavailableError
 
-
-class NetworkInterfaceError(ValueError):
-    pass
-
-
-class DiskIoUnavailableError(ValueError):
-    pass
-
-
-class TemperatureUnavailableError(ValueError):
-    pass
-
-
-def get_cpu_usage():
-    return psutil.cpu_percent(interval=1)
-
-
-def get_memory_usage():
-    return psutil.virtual_memory().percent
+get_cpu_usage = collectors.get_cpu_usage
+get_memory_usage = collectors.get_memory_usage
+get_swap_usage = collectors.get_swap_usage
+get_disk_usage = collectors.get_disk_usage
+get_filesystems = collectors.get_filesystems
+get_inode_usage = collectors.get_inode_usage
+get_disk_io = collectors.get_disk_io
+get_temperatures = collectors.get_temperatures
+get_process_count = collectors.get_process_count
+get_system_info = collectors.get_system_info
+get_uptime_seconds = collectors.get_uptime_seconds
+get_load_average = collectors.get_load_average
+get_network_io = collectors.get_network_io
 
 
-def get_swap_usage():
-    swap = psutil.swap_memory()
-    return {
-        "total": swap.total,
-        "used": swap.used,
-        "free": swap.free,
-        "percent": swap.percent,
-    }
-
-
-def get_disk_usage(path="/"):
-    return psutil.disk_usage(path).percent
-
-
-def get_filesystems():
-    filesystems = []
-    for partition in psutil.disk_partitions(all=False):
-        try:
-            usage = psutil.disk_usage(partition.mountpoint)
-        except OSError:
-            continue
-        filesystems.append(
-            {
-                "device": partition.device,
-                "mountpoint": partition.mountpoint,
-                "fstype": partition.fstype,
-                "total": usage.total,
-                "used": usage.used,
-                "free": usage.free,
-                "percent": usage.percent,
-            }
-        )
-    return filesystems
-
-
-def get_inode_usage(path="/"):
-    stats = os.statvfs(path)
-    total = stats.f_files
-    free = stats.f_ffree
-    used = max(0, total - free)
-    percent = 0.0 if total == 0 else used / total * 100
-
-    return {
-        "total": total,
-        "used": used,
-        "free": free,
-        "percent": percent,
-    }
-
-
-def get_disk_io():
-    counters = psutil.disk_io_counters()
-    if counters is None:
-        raise DiskIoUnavailableError("disk I/O counters are not available")
-
-    return {
-        "read_count": counters.read_count,
-        "write_count": counters.write_count,
-        "read_bytes": counters.read_bytes,
-        "write_bytes": counters.write_bytes,
-    }
-
-
-def get_temperatures():
-    sensor_getter = getattr(psutil, "sensors_temperatures", None)
-    if sensor_getter is None:
-        raise TemperatureUnavailableError("temperature sensors are not supported")
-
-    sensor_groups = sensor_getter()
-    readings = []
-    for chip, sensors in sensor_groups.items():
-        for sensor in sensors:
-            readings.append(
-                {
-                    "chip": chip,
-                    "label": sensor.label or chip,
-                    "current": sensor.current,
-                    "high": sensor.high,
-                    "critical": sensor.critical,
-                }
-            )
-
-    if not readings:
-        raise TemperatureUnavailableError("temperature sensors are not available")
-
-    return readings
-
-
-def get_process_count():
-    return len(psutil.pids())
-
-
-def get_system_info():
-    return {
-        "hostname": socket.gethostname(),
-        "system": platform.system(),
-        "kernel": platform.release(),
-        "architecture": platform.machine(),
-        "cpu_count": psutil.cpu_count(),
-    }
-
-
-def get_uptime_seconds():
-    return max(0, int(time.time() - psutil.boot_time()))
-
-
-def get_load_average():
-    one, five, fifteen = os.getloadavg()
-    return {"1m": one, "5m": five, "15m": fifteen}
-
-
-def get_network_io(interface=None):
-    if interface is None:
-        counters = psutil.net_io_counters()
-    else:
-        interfaces = psutil.net_io_counters(pernic=True)
-        try:
-            counters = interfaces[interface]
-        except KeyError as error:
-            raise NetworkInterfaceError(
-                f"network interface {interface!r} was not found"
-            ) from error
-
-    return {
-        "bytes_sent": counters.bytes_sent,
-        "bytes_received": counters.bytes_recv,
-        "packets_sent": counters.packets_sent,
-        "packets_received": counters.packets_recv,
-    }
-
-
-def get_status(cpu, memory, disk, warning_threshold=75.0, critical_threshold=90.0):
-    highest_usage = max(cpu, memory, disk)
-
-    if highest_usage >= critical_threshold:
-        return "CRITICAL"
-    if highest_usage >= warning_threshold:
-        return "WARNING"
-    return "HEALTHY"
-
-
-def get_exit_code(status):
-    return {
-        "HEALTHY": EXIT_HEALTHY,
-        "WARNING": EXIT_WARNING,
-        "CRITICAL": EXIT_CRITICAL,
-    }[status]
-
-
-def collect_metrics(
-    warning_threshold=75.0,
-    critical_threshold=90.0,
-    disk_path="/",
-):
+def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="/"):
     cpu = get_cpu_usage()
     memory = get_memory_usage()
     disk = get_disk_usage(disk_path)
-
     return {
         "system": get_system_info(),
         "cpu": cpu,
@@ -202,13 +39,7 @@ def collect_metrics(
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
-        "status": get_status(
-            cpu,
-            memory,
-            disk,
-            warning_threshold,
-            critical_threshold,
-        ),
+        "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
     }
 
 
@@ -217,48 +48,24 @@ def parse_arguments():
         description="Lightweight Linux system monitoring tool."
     )
     metric_group = parser.add_mutually_exclusive_group()
-    metric_group.add_argument("--cpu", action="store_true", help="Show CPU usage only.")
-    metric_group.add_argument(
-        "--memory", action="store_true", help="Show memory usage only."
+    metric_options = (
+        ("--cpu", "Show CPU usage only."),
+        ("--memory", "Show memory usage only."),
+        ("--swap", "Show swap usage only."),
+        ("--disk", "Show disk usage only."),
+        ("--filesystems", "Show mounted filesystem usage only."),
+        ("--inodes", "Show inode usage for --disk-path only."),
+        ("--disk-io", "Show aggregate disk I/O counters only."),
+        ("--temperatures", "Show hardware temperatures only."),
+        ("--processes", "Show process count only."),
+        ("--system", "Show host and system information only."),
+        ("--uptime", "Show system uptime only."),
+        ("--load", "Show load averages only."),
+        ("--network", "Show network I/O counters only."),
+        ("--status", "Show health status only."),
     )
-    metric_group.add_argument(
-        "--swap", action="store_true", help="Show swap usage only."
-    )
-    metric_group.add_argument(
-        "--disk", action="store_true", help="Show disk usage only."
-    )
-    metric_group.add_argument(
-        "--filesystems",
-        action="store_true",
-        help="Show mounted filesystem usage only.",
-    )
-    metric_group.add_argument(
-        "--inodes", action="store_true", help="Show inode usage for --disk-path only."
-    )
-    metric_group.add_argument(
-        "--disk-io", action="store_true", help="Show aggregate disk I/O counters only."
-    )
-    metric_group.add_argument(
-        "--temperatures", action="store_true", help="Show hardware temperatures only."
-    )
-    metric_group.add_argument(
-        "--processes", action="store_true", help="Show process count only."
-    )
-    metric_group.add_argument(
-        "--system", action="store_true", help="Show host and system information only."
-    )
-    metric_group.add_argument(
-        "--uptime", action="store_true", help="Show system uptime only."
-    )
-    metric_group.add_argument(
-        "--load", action="store_true", help="Show load averages only."
-    )
-    metric_group.add_argument(
-        "--network", action="store_true", help="Show network I/O counters only."
-    )
-    metric_group.add_argument(
-        "--status", action="store_true", help="Show health status only."
-    )
+    for option, help_text in metric_options:
+        metric_group.add_argument(option, action="store_true", help=help_text)
     parser.add_argument("--json", action="store_true", help="Output metrics as JSON.")
     parser.add_argument(
         "--disk-path",
@@ -314,10 +121,14 @@ def get_selected_metric(args):
         network_getter = partial(get_network_io, args.network_interface)
 
     selectors = (
-        ("cpu", args.cpu, get_cpu_usage),
-        ("memory", args.memory, get_memory_usage),
-        ("swap", args.swap, get_swap_usage),
-        ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
+        ("cpu", getattr(args, "cpu", False), get_cpu_usage),
+        ("memory", getattr(args, "memory", False), get_memory_usage),
+        ("swap", getattr(args, "swap", False), get_swap_usage),
+        (
+            "disk",
+            getattr(args, "disk", False),
+            lambda: get_disk_usage(args.disk_path),
+        ),
         ("filesystems", getattr(args, "filesystems", False), get_filesystems),
         (
             "inodes",
@@ -325,14 +136,17 @@ def get_selected_metric(args):
             partial(get_inode_usage, args.disk_path),
         ),
         ("disk_io", getattr(args, "disk_io", False), get_disk_io),
-        ("temperatures", getattr(args, "temperatures", False), get_temperatures),
-        ("processes", args.processes, get_process_count),
-        ("system", args.system, get_system_info),
-        ("uptime_seconds", args.uptime, get_uptime_seconds),
-        ("load_average", args.load, get_load_average),
-        ("network", args.network, network_getter),
+        (
+            "temperatures",
+            getattr(args, "temperatures", False),
+            get_temperatures,
+        ),
+        ("processes", getattr(args, "processes", False), get_process_count),
+        ("system", getattr(args, "system", False), get_system_info),
+        ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
+        ("load_average", getattr(args, "load", False), get_load_average),
+        ("network", getattr(args, "network", False), network_getter),
     )
-
     for name, enabled, getter in selectors:
         if enabled:
             return name, getter()
@@ -340,11 +154,7 @@ def get_selected_metric(args):
 
 
 def print_selected_metric(
-    name,
-    value,
-    json_output=False,
-    disk_path="/",
-    network_interface=None,
+    name, value, json_output=False, disk_path="/", network_interface=None
 ):
     if json_output:
         payload = {name: value}
@@ -369,11 +179,10 @@ def print_selected_metric(
         for filesystem in value:
             device = filesystem["device"] or "-"
             fstype = filesystem["fstype"] or "unknown"
-            used = filesystem["used"]
-            total = filesystem["total"]
             print(
                 f"{filesystem['mountpoint']}: {filesystem['percent']:.1f} % "
-                f"({device}, {fstype}, {used}/{total} bytes)"
+                f"({device}, {fstype}, "
+                f"{filesystem['used']}/{filesystem['total']} bytes)"
             )
     elif name == "inodes":
         print_metric(f"Inode usage ({disk_path})", value["percent"])
@@ -443,13 +252,12 @@ def print_human_readable(metrics):
 
 def main():
     args = parse_arguments()
-
     try:
         validate_thresholds(args.warning, args.critical)
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not args.network:
+    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
         raise SystemExit("serverwatch: error: --network-interface requires --network")
 
     try:
@@ -474,11 +282,11 @@ def main():
             return EXIT_HEALTHY
 
         metrics = collect_metrics(args.warning, args.critical, args.disk_path)
-    except DiskIoUnavailableError as error:
-        raise SystemExit(f"serverwatch: error: {error}") from error
-    except TemperatureUnavailableError as error:
-        raise SystemExit(f"serverwatch: error: {error}") from error
-    except NetworkInterfaceError as error:
+    except (
+        DiskIoUnavailableError,
+        TemperatureUnavailableError,
+        NetworkInterfaceError,
+    ) as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
     except OSError as error:
         raise SystemExit(
@@ -489,9 +297,4 @@ def main():
         print(json.dumps(metrics, indent=2))
     else:
         print_human_readable(metrics)
-
     return get_exit_code(metrics["status"])
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
