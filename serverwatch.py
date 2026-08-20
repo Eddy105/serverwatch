@@ -17,6 +17,10 @@ class NetworkInterfaceError(ValueError):
     pass
 
 
+class DiskIoUnavailableError(ValueError):
+    pass
+
+
 def get_cpu_usage():
     return psutil.cpu_percent(interval=1)
 
@@ -37,6 +41,19 @@ def get_swap_usage():
 
 def get_disk_usage(path="/"):
     return psutil.disk_usage(path).percent
+
+
+def get_disk_io():
+    counters = psutil.disk_io_counters()
+    if counters is None:
+        raise DiskIoUnavailableError("disk I/O counters are not available")
+
+    return {
+        "read_count": counters.read_count,
+        "write_count": counters.write_count,
+        "read_bytes": counters.read_bytes,
+        "write_bytes": counters.write_bytes,
+    }
 
 
 def get_process_count():
@@ -146,6 +163,9 @@ def parse_arguments():
         "--disk", action="store_true", help="Show disk usage only."
     )
     metric_group.add_argument(
+        "--disk-io", action="store_true", help="Show aggregate disk I/O counters only."
+    )
+    metric_group.add_argument(
         "--processes", action="store_true", help="Show process count only."
     )
     metric_group.add_argument(
@@ -222,6 +242,7 @@ def get_selected_metric(args):
         ("memory", args.memory, get_memory_usage),
         ("swap", args.swap, get_swap_usage),
         ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
+        ("disk_io", getattr(args, "disk_io", False), get_disk_io),
         ("processes", args.processes, get_process_count),
         ("system", args.system, get_system_info),
         ("uptime_seconds", args.uptime, get_uptime_seconds),
@@ -261,6 +282,11 @@ def print_selected_metric(
         print(f"Swap total: {value['total']} bytes")
     elif name == "disk":
         print_metric(f"Disk usage ({disk_path})", value)
+    elif name == "disk_io":
+        print(f"Disk read:   {value['read_bytes']} bytes")
+        print(f"Disk write:  {value['write_bytes']} bytes")
+        print(f"Read ops:    {value['read_count']}")
+        print(f"Write ops:   {value['write_count']}")
     elif name == "processes":
         print(f"Processes: {value}")
     elif name == "system":
@@ -338,6 +364,8 @@ def main():
             return EXIT_HEALTHY
 
         metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+    except DiskIoUnavailableError as error:
+        raise SystemExit(f"serverwatch: error: {error}") from error
     except NetworkInterfaceError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
     except OSError as error:

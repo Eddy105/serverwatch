@@ -10,6 +10,7 @@ from serverwatch import (
     collect_metrics,
     format_uptime,
     get_cpu_usage,
+    get_disk_io,
     get_disk_usage,
     get_exit_code,
     get_load_average,
@@ -91,6 +92,20 @@ def test_metric_helpers_use_psutil(monkeypatch):
         return type("Disk", (), {"percent": 56.5})()
 
     monkeypatch.setattr(serverwatch.psutil, "disk_usage", disk_usage)
+    monkeypatch.setattr(
+        serverwatch.psutil,
+        "disk_io_counters",
+        lambda: type(
+            "DiskIo",
+            (),
+            {
+                "read_count": 10,
+                "write_count": 20,
+                "read_bytes": 1000,
+                "write_bytes": 2000,
+            },
+        )(),
+    )
 
     assert get_cpu_usage() == 12.5
     assert get_memory_usage() == 34.5
@@ -103,6 +118,19 @@ def test_metric_helpers_use_psutil(monkeypatch):
     assert get_process_count() == 4
     assert get_disk_usage("/var") == 56.5
     assert disk_paths == ["/var"]
+    assert get_disk_io() == {
+        "read_count": 10,
+        "write_count": 20,
+        "read_bytes": 1000,
+        "write_bytes": 2000,
+    }
+
+
+def test_disk_io_unavailable(monkeypatch):
+    monkeypatch.setattr(serverwatch.psutil, "disk_io_counters", lambda: None)
+
+    with pytest.raises(serverwatch.DiskIoUnavailableError):
+        get_disk_io()
 
 
 def test_extended_metric_helpers(monkeypatch):
@@ -185,6 +213,7 @@ def test_parse_arguments_defaults(monkeypatch):
     assert not args.memory
     assert not args.swap
     assert not args.disk
+    assert not args.disk_io
     assert not args.processes
     assert not args.json
 

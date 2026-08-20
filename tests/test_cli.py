@@ -173,6 +173,50 @@ def test_disk_metric_json_includes_path(monkeypatch, capsys):
     assert payload == {"disk": 33.0, "disk_path": "/srv"}
 
 
+def test_disk_io_metric_output(monkeypatch, capsys):
+    monkeypatch.setattr(serverwatch, "parse_arguments", lambda: _args(disk_io=True))
+    monkeypatch.setattr(
+        serverwatch,
+        "get_disk_io",
+        lambda: {
+            "read_count": 10,
+            "write_count": 20,
+            "read_bytes": 1000,
+            "write_bytes": 2000,
+        },
+    )
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    output = capsys.readouterr().out
+    assert "Disk read:   1000 bytes" in output
+    assert "Disk write:  2000 bytes" in output
+    assert "Read ops:    10" in output
+    assert "Write ops:   20" in output
+
+
+def test_disk_io_metric_supports_json(monkeypatch, capsys):
+    monkeypatch.setattr(
+        serverwatch,
+        "parse_arguments",
+        lambda: _args(disk_io=True, json=True),
+    )
+    monkeypatch.setattr(
+        serverwatch,
+        "get_disk_io",
+        lambda: {
+            "read_count": 10,
+            "write_count": 20,
+            "read_bytes": 1000,
+            "write_bytes": 2000,
+        },
+    )
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["disk_io"]["read_bytes"] == 1000
+    assert payload["disk_io"]["write_count"] == 20
+
+
 @pytest.mark.parametrize(
     "metric,getter,value,expected",
     [
@@ -278,13 +322,16 @@ def _args(**overrides):
         "memory": False,
         "swap": False,
         "disk": False,
+        "disk_io": False,
         "processes": False,
         "system": False,
         "uptime": False,
         "load": False,
         "network": False,
+        "status": False,
         "json": False,
         "disk_path": "/",
+        "network_interface": None,
         "warning": 75.0,
         "critical": 90.0,
     }
