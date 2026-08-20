@@ -72,15 +72,18 @@ def test_metric_helpers_use_psutil(monkeypatch):
         "virtual_memory",
         lambda: type("Memory", (), {"percent": 34.5})(),
     )
-    monkeypatch.setattr(
-        serverwatch.psutil,
-        "disk_usage",
-        lambda path: type("Disk", (), {"percent": 56.5})(),
-    )
+    disk_paths = []
+
+    def disk_usage(path):
+        disk_paths.append(path)
+        return type("Disk", (), {"percent": 56.5})()
+
+    monkeypatch.setattr(serverwatch.psutil, "disk_usage", disk_usage)
 
     assert get_cpu_usage() == 12.5
     assert get_memory_usage() == 34.5
-    assert get_disk_usage() == 56.5
+    assert get_disk_usage("/var") == 56.5
+    assert disk_paths == ["/var"]
 
 
 def test_extended_metric_helpers(monkeypatch):
@@ -115,7 +118,7 @@ def test_extended_metric_helpers(monkeypatch):
 def test_collect_metrics(monkeypatch):
     monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 10.0)
     monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
-    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda: 20.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 20.0)
     monkeypatch.setattr(serverwatch, "get_system_info", lambda: {"hostname": "host"})
     monkeypatch.setattr(serverwatch, "get_uptime_seconds", lambda: 3600)
     monkeypatch.setattr(
@@ -134,9 +137,11 @@ def test_collect_metrics(monkeypatch):
         },
     )
 
-    metrics = collect_metrics(75.0, 90.0)
+    metrics = collect_metrics(75.0, 90.0, "/srv")
     assert metrics["cpu"] == 10.0
     assert metrics["memory"] == 80.0
+    assert metrics["disk"] == 20.0
+    assert metrics["disk_path"] == "/srv"
     assert metrics["system"]["hostname"] == "host"
     assert metrics["uptime_seconds"] == 3600
     assert metrics["status"] == "WARNING"
@@ -148,6 +153,7 @@ def test_parse_arguments_defaults(monkeypatch):
 
     assert args.warning == 75.0
     assert args.critical == 90.0
+    assert args.disk_path == "/"
     assert not args.cpu
     assert not args.memory
     assert not args.disk
@@ -158,10 +164,20 @@ def test_parse_arguments_options(monkeypatch):
     monkeypatch.setattr(
         sys,
         "argv",
-        ["serverwatch", "--cpu", "--warning", "60", "--critical", "85"],
+        [
+            "serverwatch",
+            "--disk",
+            "--disk-path",
+            "/var",
+            "--warning",
+            "60",
+            "--critical",
+            "85",
+        ],
     )
     args = parse_arguments()
 
-    assert args.cpu
+    assert args.disk
+    assert args.disk_path == "/var"
     assert args.warning == 60.0
     assert args.critical == 85.0

@@ -5,6 +5,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 ## Features
 
 - CPU, memory, and disk usage monitoring
+- Filesystem-aware disk checks for arbitrary paths and mount points
 - Host, kernel, architecture, and CPU information
 - System uptime and load averages
 - Network I/O counters
@@ -68,7 +69,20 @@ serverwatch --load
 serverwatch --network
 ```
 
-All selectors also support machine-readable JSON output:
+Monitor a specific filesystem path or mount point instead of `/`:
+
+```bash
+serverwatch --disk --disk-path /var
+serverwatch --disk-path /srv --warning 80 --critical 90
+```
+
+The selected disk path is also included in JSON output:
+
+```bash
+serverwatch --disk --disk-path /home --json
+```
+
+All selectors support machine-readable JSON output:
 
 ```bash
 serverwatch --network --json
@@ -104,7 +118,7 @@ Uptime:       12d 4h 31m
 
 CPU usage   : 12.4 %
 Memory usage: 38.2 %
-Disk usage  : 51.7 %
+Disk usage (/): 51.7 %
 Load average: 0.42 0.38 0.31
 Network RX:   24813921 bytes
 Network TX:   10452890 bytes
@@ -122,12 +136,12 @@ The full system check returns monitoring-friendly process exit codes:
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully.
+Single-metric selectors return `0` when the metric was collected successfully. An unreadable disk path exits with an error instead of silently checking a different filesystem.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
 ```bash
-serverwatch --warning 70 --critical 90
+serverwatch --disk-path /var --warning 70 --critical 90
 echo $?
 ```
 
@@ -147,7 +161,7 @@ Pushing a semantic version tag such as `v0.3.0` triggers the release workflow. I
 
 ## Roadmap
 
-Planned next steps include configuration files, structured logging, filesystem-aware disk checks, and remote monitoring capabilities.
+Planned next steps include configuration files, structured logging, richer filesystem reporting, and remote monitoring capabilities.
 
 ## License
 
