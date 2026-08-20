@@ -34,6 +34,10 @@ def get_disk_usage(path="/"):
     return psutil.disk_usage(path).percent
 
 
+def get_process_count():
+    return len(psutil.pids())
+
+
 def get_system_info():
     return {
         "hostname": socket.gethostname(),
@@ -97,6 +101,7 @@ def collect_metrics(
         "swap": get_swap_usage(),
         "disk": disk,
         "disk_path": disk_path,
+        "processes": get_process_count(),
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
@@ -124,6 +129,9 @@ def parse_arguments():
     )
     metric_group.add_argument(
         "--disk", action="store_true", help="Show disk usage only."
+    )
+    metric_group.add_argument(
+        "--processes", action="store_true", help="Show process count only."
     )
     metric_group.add_argument(
         "--system", action="store_true", help="Show host and system information only."
@@ -187,6 +195,7 @@ def get_selected_metric(args):
         ("memory", args.memory, get_memory_usage),
         ("swap", args.swap, get_swap_usage),
         ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
+        ("processes", args.processes, get_process_count),
         ("system", args.system, get_system_info),
         ("uptime_seconds", args.uptime, get_uptime_seconds),
         ("load_average", args.load, get_load_average),
@@ -217,6 +226,8 @@ def print_selected_metric(name, value, json_output=False, disk_path="/"):
         print(f"Swap total: {value['total']} bytes")
     elif name == "disk":
         print_metric(f"Disk usage ({disk_path})", value)
+    elif name == "processes":
+        print(f"Processes: {value}")
     elif name == "system":
         print(f"Hostname:     {value['hostname']}")
         print(f"System:       {value['system']}")
@@ -245,6 +256,7 @@ def print_human_readable(metrics):
     print(f"Host:         {system['hostname']}")
     print(f"Kernel:       {system['kernel']}")
     print(f"Uptime:       {format_uptime(metrics['uptime_seconds'])}")
+    print(f"Processes:    {metrics['processes']}")
     print()
     print_metric("CPU usage   ", metrics["cpu"])
     print_metric("Memory usage", metrics["memory"])
