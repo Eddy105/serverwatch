@@ -8,7 +8,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 - Filesystem-aware disk checks for arbitrary paths and mount points
 - Host, kernel, architecture, and CPU information
 - System uptime and load averages
-- Network I/O counters
+- Aggregate and per-interface network I/O counters
 - Human-readable and JSON output
 - Individual metric selectors
 - Focused health-status output for scripts and monitoring checks
@@ -112,6 +112,16 @@ The selected disk path is also included in JSON output:
 serverwatch --disk --disk-path /home --json
 ```
 
+Inspect aggregate network traffic or a specific Linux network interface:
+
+```bash
+serverwatch --network
+serverwatch --network --network-interface eth0
+serverwatch --network --network-interface enp3s0 --json
+```
+
+`--network-interface` is intentionally tied to the `--network` selector. Unknown interface names fail with a clear error instead of silently returning aggregate counters. JSON output includes the selected interface name.
+
 All selectors support machine-readable JSON output:
 
 ```bash
@@ -168,7 +178,7 @@ The full system check and `--status` return monitoring-friendly process exit cod
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully. Swap usage and process count are currently informational and do not change the full health status. An unreadable disk path exits with an error instead of silently checking a different filesystem.
+Single-metric selectors return `0` when the metric was collected successfully. Swap usage and process count are currently informational and do not change the full health status. An unreadable disk path or unknown requested network interface exits with an error instead of silently checking a different resource.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
