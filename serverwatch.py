@@ -281,7 +281,7 @@ def main():
         raise SystemExit(f"serverwatch: error: {error}") from error
 
     try:
-        if args.status:
+        if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
             if args.json:
                 print(json.dumps({"status": metrics["status"]}, indent=2))
