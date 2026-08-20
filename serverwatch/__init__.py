@@ -97,8 +97,17 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
 
 def main():
     # Keep the historical top-level API patchable for integrations and tests.
+    original_parse_arguments = parse_arguments
+
+    def parse_arguments_compat():
+        args = original_parse_arguments()
+        if not hasattr(args, "interval"):
+            args.interval = 5.0
+        if not hasattr(args, "watch"):
+            args.watch = False
+        return args
+
     names = (
-        "parse_arguments",
         "validate_thresholds",
         "validate_interval",
         "collect_metrics",
@@ -127,6 +136,7 @@ def main():
     )
     for name in names:
         setattr(_cli, name, globals()[name])
+    _cli.parse_arguments = parse_arguments_compat
     return _cli.main()
 
 
