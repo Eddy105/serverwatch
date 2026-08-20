@@ -217,6 +217,77 @@ def test_disk_io_metric_supports_json(monkeypatch, capsys):
     assert payload["disk_io"]["write_count"] == 20
 
 
+def test_temperature_metric_output(monkeypatch, capsys):
+    monkeypatch.setattr(
+        serverwatch,
+        "parse_arguments",
+        lambda: _args(temperatures=True),
+    )
+    monkeypatch.setattr(
+        serverwatch,
+        "get_temperatures",
+        lambda: [
+            {
+                "chip": "coretemp",
+                "label": "Package id 0",
+                "current": 54.5,
+                "high": 80.0,
+                "critical": 100.0,
+            }
+        ],
+    )
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    output = capsys.readouterr().out
+    assert "coretemp/Package id 0: 54.5 °C" in output
+    assert "high 80.0 °C" in output
+    assert "critical 100.0 °C" in output
+
+
+def test_temperature_metric_supports_json(monkeypatch, capsys):
+    monkeypatch.setattr(
+        serverwatch,
+        "parse_arguments",
+        lambda: _args(temperatures=True, json=True),
+    )
+    monkeypatch.setattr(
+        serverwatch,
+        "get_temperatures",
+        lambda: [
+            {
+                "chip": "acpitz",
+                "label": "temp1",
+                "current": 42.0,
+                "high": None,
+                "critical": None,
+            }
+        ],
+    )
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["temperatures"][0]["current"] == 42.0
+    assert payload["temperatures"][0]["chip"] == "acpitz"
+
+
+def test_temperature_unavailable_exits_with_error(monkeypatch):
+    monkeypatch.setattr(
+        serverwatch,
+        "parse_arguments",
+        lambda: _args(temperatures=True),
+    )
+
+    def unavailable():
+        raise serverwatch.TemperatureUnavailableError(
+            "temperature sensors are not available"
+        )
+
+    monkeypatch.setattr(serverwatch, "get_temperatures", unavailable)
+
+    with pytest.raises(SystemExit, match="temperature sensors are not available"):
+        serverwatch.main()
+
+
 @pytest.mark.parametrize(
     "metric,getter,value,expected",
     [
@@ -323,6 +394,7 @@ def _args(**overrides):
         "swap": False,
         "disk": False,
         "disk_io": False,
+        "temperatures": False,
         "processes": False,
         "system": False,
         "uptime": False,
