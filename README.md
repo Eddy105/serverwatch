@@ -4,7 +4,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 
 ## Features
 
-- CPU, memory, and disk usage monitoring
+- CPU, memory, swap, and disk usage monitoring
 - Filesystem-aware disk checks for arbitrary paths and mount points
 - Host, kernel, architecture, and CPU information
 - System uptime and load averages
@@ -62,11 +62,19 @@ Show a single metric or information group:
 ```bash
 serverwatch --cpu
 serverwatch --memory
+serverwatch --swap
 serverwatch --disk
 serverwatch --system
 serverwatch --uptime
 serverwatch --load
 serverwatch --network
+```
+
+Swap output includes utilization plus used and total bytes:
+
+```bash
+serverwatch --swap
+serverwatch --swap --json
 ```
 
 Monitor a specific filesystem path or mount point instead of `/`:
@@ -118,6 +126,7 @@ Uptime:       12d 4h 31m
 
 CPU usage   : 12.4 %
 Memory usage: 38.2 %
+Swap usage  : 4.6 %
 Disk usage (/): 51.7 %
 Load average: 0.42 0.38 0.31
 Network RX:   24813921 bytes
@@ -136,7 +145,7 @@ The full system check returns monitoring-friendly process exit codes:
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully. An unreadable disk path exits with an error instead of silently checking a different filesystem.
+Single-metric selectors return `0` when the metric was collected successfully. Swap usage is currently informational and does not change the full health status. An unreadable disk path exits with an error instead of silently checking a different filesystem.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
