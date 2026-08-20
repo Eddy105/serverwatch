@@ -43,6 +43,21 @@ def get_disk_usage(path="/"):
     return psutil.disk_usage(path).percent
 
 
+def get_inode_usage(path="/"):
+    stats = os.statvfs(path)
+    total = stats.f_files
+    free = stats.f_ffree
+    used = max(0, total - free)
+    percent = 0.0 if total == 0 else used / total * 100
+
+    return {
+        "total": total,
+        "used": used,
+        "free": free,
+        "percent": percent,
+    }
+
+
 def get_disk_io():
     counters = psutil.disk_io_counters()
     if counters is None:
@@ -163,6 +178,9 @@ def parse_arguments():
         "--disk", action="store_true", help="Show disk usage only."
     )
     metric_group.add_argument(
+        "--inodes", action="store_true", help="Show inode usage for --disk-path only."
+    )
+    metric_group.add_argument(
         "--disk-io", action="store_true", help="Show aggregate disk I/O counters only."
     )
     metric_group.add_argument(
@@ -242,6 +260,11 @@ def get_selected_metric(args):
         ("memory", args.memory, get_memory_usage),
         ("swap", args.swap, get_swap_usage),
         ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
+        (
+            "inodes",
+            getattr(args, "inodes", False),
+            partial(get_inode_usage, args.disk_path),
+        ),
         ("disk_io", getattr(args, "disk_io", False), get_disk_io),
         ("processes", args.processes, get_process_count),
         ("system", args.system, get_system_info),
@@ -265,7 +288,7 @@ def print_selected_metric(
 ):
     if json_output:
         payload = {name: value}
-        if name == "disk":
+        if name in {"disk", "inodes"}:
             payload["disk_path"] = disk_path
         if name == "network" and network_interface:
             payload["network_interface"] = network_interface
@@ -282,6 +305,11 @@ def print_selected_metric(
         print(f"Swap total: {value['total']} bytes")
     elif name == "disk":
         print_metric(f"Disk usage ({disk_path})", value)
+    elif name == "inodes":
+        print_metric(f"Inode usage ({disk_path})", value["percent"])
+        print(f"Inodes used:  {value['used']}")
+        print(f"Inodes free:  {value['free']}")
+        print(f"Inodes total: {value['total']}")
     elif name == "disk_io":
         print(f"Disk read:   {value['read_bytes']} bytes")
         print(f"Disk write:  {value['write_bytes']} bytes")
