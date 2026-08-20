@@ -242,7 +242,7 @@ def get_selected_metric(args):
         ("memory", args.memory, get_memory_usage),
         ("swap", args.swap, get_swap_usage),
         ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
-        ("disk_io", args.disk_io, get_disk_io),
+        ("disk_io", getattr(args, "disk_io", False), get_disk_io),
         ("processes", args.processes, get_process_count),
         ("system", args.system, get_system_info),
         ("uptime_seconds", args.uptime, get_uptime_seconds),
