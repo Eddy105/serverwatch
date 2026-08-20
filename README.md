@@ -6,6 +6,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 
 - CPU, memory, swap, disk, and process count monitoring
 - Filesystem-aware disk and inode checks for arbitrary paths and mount points
+- Mounted filesystem overview with capacity and usage details
 - Aggregate disk I/O counters for read/write activity
 - Hardware temperature sensor reporting when supported by the host
 - Host, kernel, architecture, and CPU information
@@ -67,6 +68,7 @@ serverwatch --cpu
 serverwatch --memory
 serverwatch --swap
 serverwatch --disk
+serverwatch --filesystems
 serverwatch --inodes
 serverwatch --disk-io
 serverwatch --temperatures
@@ -116,6 +118,15 @@ The selected disk path is also included in JSON output:
 ```bash
 serverwatch --disk --disk-path /home --json
 ```
+
+Inspect all mounted physical filesystems in one view:
+
+```bash
+serverwatch --filesystems
+serverwatch --filesystems --json
+```
+
+Filesystem output reports device, mount point, filesystem type, total bytes, used bytes, free bytes, and percentage utilization. Mounts that cannot be read are skipped rather than causing the complete overview to fail. This selector is informational and does not change the CPU/memory/disk health status.
 
 Inspect inode consumption for a filesystem path or mount point:
 
@@ -211,7 +222,7 @@ The full system check and `--status` return monitoring-friendly process exit cod
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, inode usage, disk I/O counters, and temperature readings are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
+Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, filesystem overview, inode usage, disk I/O counters, and temperature readings are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
