@@ -1,4 +1,5 @@
 from . import cli as _cli
+from . import collectors
 from .collectors import (
     DiskIoUnavailableError,
     NetworkInterfaceError,
@@ -24,6 +25,13 @@ from .health import (
     get_exit_code,
     get_status,
 )
+
+# Preserve the historical module attributes used by integrations and tests.
+os = collectors.os
+platform = collectors.platform
+socket = collectors.socket
+psutil = collectors.psutil
+time = collectors.time
 
 
 def parse_arguments():
@@ -74,6 +82,8 @@ def main():
         "get_uptime_seconds",
         "get_load_average",
         "get_network_io",
+        "get_status",
+        "get_exit_code",
     )
     for name in names:
         setattr(_cli, name, globals()[name])
