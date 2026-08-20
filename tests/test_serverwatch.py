@@ -16,6 +16,7 @@ from serverwatch import (
     get_memory_usage,
     get_network_io,
     get_status,
+    get_swap_usage,
     get_system_info,
     get_uptime_seconds,
     parse_arguments,
@@ -72,6 +73,15 @@ def test_metric_helpers_use_psutil(monkeypatch):
         "virtual_memory",
         lambda: type("Memory", (), {"percent": 34.5})(),
     )
+    monkeypatch.setattr(
+        serverwatch.psutil,
+        "swap_memory",
+        lambda: type(
+            "Swap",
+            (),
+            {"total": 1000, "used": 250, "free": 750, "percent": 25.0},
+        )(),
+    )
     disk_paths = []
 
     def disk_usage(path):
@@ -82,6 +92,12 @@ def test_metric_helpers_use_psutil(monkeypatch):
 
     assert get_cpu_usage() == 12.5
     assert get_memory_usage() == 34.5
+    assert get_swap_usage() == {
+        "total": 1000,
+        "used": 250,
+        "free": 750,
+        "percent": 25.0,
+    }
     assert get_disk_usage("/var") == 56.5
     assert disk_paths == ["/var"]
 
@@ -118,6 +134,11 @@ def test_extended_metric_helpers(monkeypatch):
 def test_collect_metrics(monkeypatch):
     monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 10.0)
     monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
+    monkeypatch.setattr(
+        serverwatch,
+        "get_swap_usage",
+        lambda: {"total": 1000, "used": 100, "free": 900, "percent": 10.0},
+    )
     monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 20.0)
     monkeypatch.setattr(serverwatch, "get_system_info", lambda: {"hostname": "host"})
     monkeypatch.setattr(serverwatch, "get_uptime_seconds", lambda: 3600)
@@ -140,6 +161,7 @@ def test_collect_metrics(monkeypatch):
     metrics = collect_metrics(75.0, 90.0, "/srv")
     assert metrics["cpu"] == 10.0
     assert metrics["memory"] == 80.0
+    assert metrics["swap"]["percent"] == 10.0
     assert metrics["disk"] == 20.0
     assert metrics["disk_path"] == "/srv"
     assert metrics["system"]["hostname"] == "host"
@@ -156,6 +178,7 @@ def test_parse_arguments_defaults(monkeypatch):
     assert args.disk_path == "/"
     assert not args.cpu
     assert not args.memory
+    assert not args.swap
     assert not args.disk
     assert not args.json
 

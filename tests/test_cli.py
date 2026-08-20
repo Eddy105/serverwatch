@@ -16,6 +16,7 @@ def _metrics(status="HEALTHY", cpu=10.0, disk_path="/"):
         },
         "cpu": cpu,
         "memory": 20.0,
+        "swap": {"total": 1000, "used": 250, "free": 750, "percent": 25.0},
         "disk": 30.0,
         "disk_path": disk_path,
         "uptime_seconds": 90061,
@@ -42,6 +43,7 @@ def test_main_returns_healthy_exit_code(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "Host:         test-host" in output
     assert "Uptime:       1d 1h 1m" in output
+    assert "Swap usage  : 25.0 %" in output
     assert "Disk usage (/): 30.0 %" in output
     assert "Load average: 1.00 0.50 0.25" in output
     assert "Network RX:   200 bytes" in output
@@ -62,6 +64,7 @@ def test_json_output_is_machine_readable(monkeypatch, capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "WARNING"
     assert payload["cpu"] == 80.0
+    assert payload["swap"]["percent"] == 25.0
     assert payload["disk_path"] == "/"
     assert payload["system"]["hostname"] == "test-host"
     assert payload["network"]["bytes_received"] == 200
@@ -80,6 +83,39 @@ def test_percentage_metric_output(monkeypatch, capsys, metric, getter, label):
 
     assert serverwatch.main() == serverwatch.EXIT_HEALTHY
     assert f"{label}: 42.5 %" in capsys.readouterr().out
+
+
+def test_swap_metric_output(monkeypatch, capsys):
+    monkeypatch.setattr(serverwatch, "parse_arguments", lambda: _args(swap=True))
+    monkeypatch.setattr(
+        serverwatch,
+        "get_swap_usage",
+        lambda: {"total": 1000, "used": 250, "free": 750, "percent": 25.0},
+    )
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    output = capsys.readouterr().out
+    assert "Swap usage: 25.0 %" in output
+    assert "Swap used: 250 bytes" in output
+    assert "Swap total: 1000 bytes" in output
+
+
+def test_swap_metric_supports_json(monkeypatch, capsys):
+    monkeypatch.setattr(
+        serverwatch,
+        "parse_arguments",
+        lambda: _args(swap=True, json=True),
+    )
+    monkeypatch.setattr(
+        serverwatch,
+        "get_swap_usage",
+        lambda: {"total": 1000, "used": 250, "free": 750, "percent": 25.0},
+    )
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["swap"]["percent"] == 25.0
+    assert payload["swap"]["used"] == 250
 
 
 def test_disk_metric_uses_selected_path(monkeypatch, capsys):
@@ -217,6 +253,7 @@ def _args(**overrides):
     defaults = {
         "cpu": False,
         "memory": False,
+        "swap": False,
         "disk": False,
         "system": False,
         "uptime": False,

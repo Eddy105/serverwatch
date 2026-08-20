@@ -20,6 +20,16 @@ def get_memory_usage():
     return psutil.virtual_memory().percent
 
 
+def get_swap_usage():
+    swap = psutil.swap_memory()
+    return {
+        "total": swap.total,
+        "used": swap.used,
+        "free": swap.free,
+        "percent": swap.percent,
+    }
+
+
 def get_disk_usage(path="/"):
     return psutil.disk_usage(path).percent
 
@@ -84,6 +94,7 @@ def collect_metrics(
         "system": get_system_info(),
         "cpu": cpu,
         "memory": memory,
+        "swap": get_swap_usage(),
         "disk": disk,
         "disk_path": disk_path,
         "uptime_seconds": get_uptime_seconds(),
@@ -107,6 +118,9 @@ def parse_arguments():
     metric_group.add_argument("--cpu", action="store_true", help="Show CPU usage only.")
     metric_group.add_argument(
         "--memory", action="store_true", help="Show memory usage only."
+    )
+    metric_group.add_argument(
+        "--swap", action="store_true", help="Show swap usage only."
     )
     metric_group.add_argument(
         "--disk", action="store_true", help="Show disk usage only."
@@ -171,6 +185,7 @@ def get_selected_metric(args):
     selectors = (
         ("cpu", args.cpu, get_cpu_usage),
         ("memory", args.memory, get_memory_usage),
+        ("swap", args.swap, get_swap_usage),
         ("disk", args.disk, lambda: get_disk_usage(args.disk_path)),
         ("system", args.system, get_system_info),
         ("uptime_seconds", args.uptime, get_uptime_seconds),
@@ -196,6 +211,10 @@ def print_selected_metric(name, value, json_output=False, disk_path="/"):
         print_metric("CPU usage", value)
     elif name == "memory":
         print_metric("Memory usage", value)
+    elif name == "swap":
+        print_metric("Swap usage", value["percent"])
+        print(f"Swap used: {value['used']} bytes")
+        print(f"Swap total: {value['total']} bytes")
     elif name == "disk":
         print_metric(f"Disk usage ({disk_path})", value)
     elif name == "system":
@@ -217,6 +236,7 @@ def print_selected_metric(name, value, json_output=False, disk_path="/"):
 
 def print_human_readable(metrics):
     system = metrics["system"]
+    swap = metrics["swap"]
     load = metrics["load_average"]
     network = metrics["network"]
 
@@ -228,6 +248,7 @@ def print_human_readable(metrics):
     print()
     print_metric("CPU usage   ", metrics["cpu"])
     print_metric("Memory usage", metrics["memory"])
+    print_metric("Swap usage  ", swap["percent"])
     print_metric(f"Disk usage ({metrics['disk_path']})", metrics["disk"])
     print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
     print(f"Network RX:   {network['bytes_received']} bytes")
