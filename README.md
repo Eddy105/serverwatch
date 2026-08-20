@@ -5,8 +5,11 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 ## Features
 
 - CPU, memory, and disk usage monitoring
+- Host, kernel, architecture, and CPU information
+- System uptime and load averages
+- Network I/O counters
 - Human-readable and JSON output
-- Individual metric flags (`--cpu`, `--memory`, `--disk`)
+- Individual metric selectors
 - Configurable warning and critical thresholds
 - Monitoring-friendly exit codes
 - Automated tests with GitHub Actions
@@ -53,15 +56,26 @@ Run the default system overview:
 serverwatch
 ```
 
-Show a single metric:
+Show a single metric or information group:
 
 ```bash
 serverwatch --cpu
 serverwatch --memory
 serverwatch --disk
+serverwatch --system
+serverwatch --uptime
+serverwatch --load
+serverwatch --network
 ```
 
-Machine-readable output:
+All selectors also support machine-readable JSON output:
+
+```bash
+serverwatch --network --json
+serverwatch --system --json
+```
+
+Output the complete system overview as JSON:
 
 ```bash
 serverwatch --json
@@ -84,10 +98,16 @@ Example output:
 ```text
 SERVERWATCH
 ----------------------------
+Host:         server01
+Kernel:       6.8.0-79-generic
+Uptime:       12d 4h 31m
 
 CPU usage   : 12.4 %
 Memory usage: 38.2 %
 Disk usage  : 51.7 %
+Load average: 0.42 0.38 0.31
+Network RX:   24813921 bytes
+Network TX:   10452890 bytes
 
 Status: HEALTHY
 ```
@@ -101,6 +121,8 @@ The full system check returns monitoring-friendly process exit codes:
 | 0 | HEALTHY |
 | 1 | WARNING |
 | 2 | CRITICAL |
+
+Single-metric selectors return `0` when the metric was collected successfully.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
@@ -117,7 +139,7 @@ Run the test suite with:
 pytest
 ```
 
-Pull requests are tested automatically with GitHub Actions.
+Pull requests are tested automatically with GitHub Actions. The quality workflow enforces Ruff linting and formatting plus a minimum test coverage of 80%.
 
 ## Releases
 
@@ -125,7 +147,7 @@ Pushing a semantic version tag such as `v0.3.0` triggers the release workflow. I
 
 ## Roadmap
 
-Planned next steps include a package-oriented source layout, configuration files, structured logging, additional metrics, and remote monitoring capabilities.
+Planned next steps include configuration files, structured logging, filesystem-aware disk checks, and remote monitoring capabilities.
 
 ## License
 

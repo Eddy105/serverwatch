@@ -70,12 +70,84 @@ def test_json_output_is_machine_readable(monkeypatch, capsys):
         ("disk", "get_disk_usage", "Disk usage"),
     ],
 )
-def test_single_metric_output(monkeypatch, capsys, metric, getter, label):
+def test_percentage_metric_output(monkeypatch, capsys, metric, getter, label):
     monkeypatch.setattr(serverwatch, "parse_arguments", lambda: _args(**{metric: True}))
     monkeypatch.setattr(serverwatch, getter, lambda: 42.5)
 
     assert serverwatch.main() == serverwatch.EXIT_HEALTHY
     assert f"{label}: 42.5 %" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "metric,getter,value,expected",
+    [
+        (
+            "system",
+            "get_system_info",
+            {
+                "hostname": "test-host",
+                "system": "Linux",
+                "kernel": "6.0-test",
+                "architecture": "x86_64",
+                "cpu_count": 8,
+            },
+            "Hostname:     test-host",
+        ),
+        ("uptime", "get_uptime_seconds", 90061, "Uptime: 1d 1h 1m"),
+        (
+            "load",
+            "get_load_average",
+            {"1m": 1.0, "5m": 0.5, "15m": 0.25},
+            "Load average: 1.00 0.50 0.25",
+        ),
+        (
+            "network",
+            "get_network_io",
+            {
+                "bytes_sent": 100,
+                "bytes_received": 200,
+                "packets_sent": 10,
+                "packets_received": 20,
+            },
+            "Network RX: 200 bytes",
+        ),
+    ],
+)
+def test_extended_metric_output(
+    monkeypatch,
+    capsys,
+    metric,
+    getter,
+    value,
+    expected,
+):
+    monkeypatch.setattr(serverwatch, "parse_arguments", lambda: _args(**{metric: True}))
+    monkeypatch.setattr(serverwatch, getter, lambda: value)
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    assert expected in capsys.readouterr().out
+
+
+def test_selected_metric_supports_json(monkeypatch, capsys):
+    monkeypatch.setattr(
+        serverwatch,
+        "parse_arguments",
+        lambda: _args(network=True, json=True),
+    )
+    monkeypatch.setattr(
+        serverwatch,
+        "get_network_io",
+        lambda: {
+            "bytes_sent": 100,
+            "bytes_received": 200,
+            "packets_sent": 10,
+            "packets_received": 20,
+        },
+    )
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["network"]["bytes_received"] == 200
 
 
 def test_invalid_thresholds_exit_with_error(monkeypatch):
@@ -94,6 +166,10 @@ def _args(**overrides):
         "cpu": False,
         "memory": False,
         "disk": False,
+        "system": False,
+        "uptime": False,
+        "load": False,
+        "network": False,
         "json": False,
         "warning": 75.0,
         "critical": 90.0,
