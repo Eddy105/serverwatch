@@ -20,6 +20,7 @@ from serverwatch import (
     get_status,
     get_swap_usage,
     get_system_info,
+    get_temperatures,
     get_uptime_seconds,
     parse_arguments,
     validate_thresholds,
@@ -133,6 +134,51 @@ def test_disk_io_unavailable(monkeypatch):
         get_disk_io()
 
 
+def test_temperature_collection(monkeypatch):
+    sensor = type(
+        "Temperature",
+        (),
+        {"label": "Package id 0", "current": 54.5, "high": 80.0, "critical": 100.0},
+    )()
+    monkeypatch.setattr(
+        serverwatch.psutil,
+        "sensors_temperatures",
+        lambda: {"coretemp": [sensor]},
+    )
+
+    assert get_temperatures() == [
+        {
+            "chip": "coretemp",
+            "label": "Package id 0",
+            "current": 54.5,
+            "high": 80.0,
+            "critical": 100.0,
+        }
+    ]
+
+
+def test_temperature_collection_uses_chip_when_label_is_empty(monkeypatch):
+    sensor = type(
+        "Temperature",
+        (),
+        {"label": "", "current": 42.0, "high": None, "critical": None},
+    )()
+    monkeypatch.setattr(
+        serverwatch.psutil,
+        "sensors_temperatures",
+        lambda: {"acpitz": [sensor]},
+    )
+
+    assert get_temperatures()[0]["label"] == "acpitz"
+
+
+def test_temperature_unavailable_when_no_readings(monkeypatch):
+    monkeypatch.setattr(serverwatch.psutil, "sensors_temperatures", lambda: {})
+
+    with pytest.raises(serverwatch.TemperatureUnavailableError):
+        get_temperatures()
+
+
 def test_extended_metric_helpers(monkeypatch):
     monkeypatch.setattr(serverwatch.socket, "gethostname", lambda: "test-host")
     monkeypatch.setattr(serverwatch.platform, "system", lambda: "Linux")
@@ -214,6 +260,7 @@ def test_parse_arguments_defaults(monkeypatch):
     assert not args.swap
     assert not args.disk
     assert not args.disk_io
+    assert not args.temperatures
     assert not args.processes
     assert not args.json
 
