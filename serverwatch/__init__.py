@@ -26,6 +26,39 @@ from .health import (
     get_status,
 )
 
+__all__ = (
+    "DiskIoUnavailableError",
+    "NetworkInterfaceError",
+    "TemperatureUnavailableError",
+    "EXIT_CRITICAL",
+    "EXIT_HEALTHY",
+    "EXIT_WARNING",
+    "collect_metrics",
+    "format_uptime",
+    "get_cpu_usage",
+    "get_disk_io",
+    "get_disk_usage",
+    "get_exit_code",
+    "get_filesystems",
+    "get_inode_usage",
+    "get_load_average",
+    "get_memory_usage",
+    "get_network_io",
+    "get_process_count",
+    "get_selected_metric",
+    "get_status",
+    "get_swap_usage",
+    "get_system_info",
+    "get_temperatures",
+    "get_uptime_seconds",
+    "main",
+    "parse_arguments",
+    "print_human_readable",
+    "print_metric",
+    "print_selected_metric",
+    "validate_thresholds",
+)
+
 # Preserve the historical module attributes used by integrations and tests.
 os = collectors.os
 platform = collectors.platform
@@ -34,12 +67,8 @@ psutil = collectors.psutil
 time = collectors.time
 
 
-def parse_arguments():
-    return _cli.parse_arguments()
-
-
-def validate_thresholds(warning_threshold, critical_threshold):
-    return _cli.validate_thresholds(warning_threshold, critical_threshold)
+parse_arguments = _cli.parse_arguments
+validate_thresholds = _cli.validate_thresholds
 
 
 def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="/"):

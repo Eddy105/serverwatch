@@ -171,7 +171,8 @@ def print_selected_metric(
             fstype = filesystem["fstype"] or "unknown"
             print(
                 f"{filesystem['mountpoint']}: {filesystem['percent']:.1f} % "
-                f"({device}, {fstype}, {filesystem['used']}/{filesystem['total']} bytes)"
+                f"({device}, {fstype}, "
+                f"{filesystem['used']}/{filesystem['total']} bytes)"
             )
     elif name == "inodes":
         print_metric(f"Inode usage ({disk_path})", value["percent"])
