@@ -14,6 +14,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 - Aggregate and per-interface network I/O counters
 - Human-readable and JSON output
 - Individual metric selectors
+- Continuous watch mode with configurable refresh interval
 - Focused health-status output for scripts and monitoring checks
 - Configurable warning and critical thresholds
 - Monitoring-friendly exit codes
@@ -78,6 +79,22 @@ serverwatch --uptime
 serverwatch --load
 serverwatch --network
 ```
+
+Continuously refresh the complete system overview:
+
+```bash
+serverwatch --watch
+serverwatch --watch --interval 2
+```
+
+Watch a single metric:
+
+```bash
+serverwatch --cpu --watch --interval 1
+serverwatch --memory --watch --interval 2
+```
+
+Watch mode refreshes the terminal in place and stops cleanly with `Ctrl+C`. It is intended for interactive terminal use and cannot be combined with `--json`.
 
 Return only the current health state while preserving monitoring exit codes:
 
