@@ -12,6 +12,10 @@ EXIT_WARNING = 1
 EXIT_CRITICAL = 2
 
 
+class NetworkInterfaceError(ValueError):
+    pass
+
+
 def get_cpu_usage():
     return psutil.cpu_percent(interval=1)
 
@@ -57,8 +61,18 @@ def get_load_average():
     return {"1m": one, "5m": five, "15m": fifteen}
 
 
-def get_network_io():
-    counters = psutil.net_io_counters()
+def get_network_io(interface=None):
+    if interface is None:
+        counters = psutil.net_io_counters()
+    else:
+        interfaces = psutil.net_io_counters(pernic=True)
+        try:
+            counters = interfaces[interface]
+        except KeyError as error:
+            raise NetworkInterfaceError(
+                f"network interface {interface!r} was not found"
+            ) from error
+
     return {
         "bytes_sent": counters.bytes_sent,
         "bytes_received": counters.bytes_recv,
@@ -156,6 +170,11 @@ def parse_arguments():
         help="Filesystem path used for disk usage checks (default: /).",
     )
     parser.add_argument(
+        "--network-interface",
+        metavar="INTERFACE",
+        help="Network interface used with --network (for example: eth0).",
+    )
+    parser.add_argument(
         "--warning",
         type=float,
         default=75.0,
@@ -193,6 +212,10 @@ def format_uptime(seconds):
 
 
 def get_selected_metric(args):
+    network_getter = get_network_io
+    if getattr(args, "network_interface", None):
+        network_getter = lambda: get_network_io(args.network_interface)
+
     selectors = (
         ("cpu", args.cpu, get_cpu_usage),
         ("memory", args.memory, get_memory_usage),
@@ -202,7 +225,7 @@ def get_selected_metric(args):
         ("system", args.system, get_system_info),
         ("uptime_seconds", args.uptime, get_uptime_seconds),
         ("load_average", args.load, get_load_average),
-        ("network", args.network, get_network_io),
+        ("network", args.network, network_getter),
     )
 
     for name, enabled, getter in selectors:
@@ -211,11 +234,19 @@ def get_selected_metric(args):
     return None
 
 
-def print_selected_metric(name, value, json_output=False, disk_path="/"):
+def print_selected_metric(
+    name,
+    value,
+    json_output=False,
+    disk_path="/",
+    network_interface=None,
+):
     if json_output:
         payload = {name: value}
         if name == "disk":
             payload["disk_path"] = disk_path
+        if name == "network" and network_interface:
+            payload["network_interface"] = network_interface
         print(json.dumps(payload, indent=2))
         return
 
@@ -242,10 +273,11 @@ def print_selected_metric(name, value, json_output=False, disk_path="/"):
     elif name == "load_average":
         print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
     elif name == "network":
-        print(f"Network RX: {value['bytes_received']} bytes")
-        print(f"Network TX: {value['bytes_sent']} bytes")
-        print(f"Packets RX: {value['packets_received']}")
-        print(f"Packets TX: {value['packets_sent']}")
+        suffix = f" ({network_interface})" if network_interface else ""
+        print(f"Network RX{suffix}: {value['bytes_received']} bytes")
+        print(f"Network TX{suffix}: {value['bytes_sent']} bytes")
+        print(f"Packets RX{suffix}: {value['packets_received']}")
+        print(f"Packets TX{suffix}: {value['packets_sent']}")
 
 
 def print_human_readable(metrics):
@@ -280,6 +312,9 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
+    if getattr(args, "network_interface", None) and not args.network:
+        raise SystemExit("serverwatch: error: --network-interface requires --network")
+
     try:
         if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
@@ -292,10 +327,18 @@ def main():
         selected_metric = get_selected_metric(args)
         if selected_metric is not None:
             name, value = selected_metric
-            print_selected_metric(name, value, args.json, args.disk_path)
+            print_selected_metric(
+                name,
+                value,
+                args.json,
+                args.disk_path,
+                getattr(args, "network_interface", None),
+            )
             return EXIT_HEALTHY
 
         metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+    except NetworkInterfaceError as error:
+        raise SystemExit(f"serverwatch: error: {error}") from error
     except OSError as error:
         raise SystemExit(
             f"serverwatch: error: cannot read disk path {args.disk_path!r}: {error}"
