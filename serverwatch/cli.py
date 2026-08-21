@@ -4,7 +4,7 @@ import time
 from functools import partial
 
 from . import collectors
-from .health import EXIT_HEALTHY, get_exit_code, get_status
+from .health import EXIT_HEALTHY, get_exit_code, get_health_score, get_status
 
 DiskIoUnavailableError = collectors.DiskIoUnavailableError
 NetworkInterfaceError = collectors.NetworkInterfaceError
@@ -44,6 +44,9 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "network": get_network_io(),
         "network_status": get_network_status(),
         "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
+        "health_score": get_health_score(
+            cpu, memory, disk, warning_threshold, critical_threshold
+        ),
     }
 
 
@@ -283,7 +286,10 @@ def print_selected_metric(
     elif name == "uptime_seconds":
         print(f"Uptime: {format_uptime(value)}")
     elif name == "load_average":
-        print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
+        print(
+            f"Load average: {value['1m']:.2f} "
+            f"{value['5m']:.2f} {value['15m']:.2f}"
+        )
     elif name == "network":
         suffix = f" ({network_interface})" if network_interface else ""
         print(f"Network RX{suffix}: {value['bytes_received']} bytes")
@@ -341,10 +347,14 @@ def print_human_readable(metrics):
     print_metric("Memory usage", metrics["memory"])
     print_metric("Swap usage  ", swap["percent"])
     print_metric(f"Disk usage ({metrics['disk_path']})", metrics["disk"])
-    print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
+    print(
+        f"Load average: {load['1m']:.2f} "
+        f"{load['5m']:.2f} {load['15m']:.2f}"
+    )
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
+    print(f"Health score: {metrics['health_score']}/100")
     print(f"Status: {metrics['status']}")
 
 
@@ -382,7 +392,15 @@ def main():
         if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
             if args.json:
-                print(json.dumps({"status": metrics["status"]}, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "status": metrics["status"],
+                            "health_score": metrics["health_score"],
+                        },
+                        indent=2,
+                    )
+                )
             else:
                 print(metrics["status"])
             return get_exit_code(metrics["status"])
