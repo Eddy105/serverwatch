@@ -12,6 +12,29 @@ def get_status(cpu, memory, disk, warning_threshold=75.0, critical_threshold=90.
     return "HEALTHY"
 
 
+def get_health_score(
+    cpu,
+    memory,
+    disk,
+    warning_threshold=75.0,
+    critical_threshold=90.0,
+):
+    """Return a transparent 0-100 score for CPU, memory, and disk usage."""
+    if warning_threshold >= critical_threshold:
+        raise ValueError("warning threshold must be lower than critical threshold")
+
+    def score_usage(usage):
+        if usage < warning_threshold:
+            return 100.0
+        if usage >= critical_threshold:
+            return 0.0
+        return 100.0 * (critical_threshold - usage) / (
+            critical_threshold - warning_threshold
+        )
+
+    return round(sum(score_usage(value) for value in (cpu, memory, disk)) / 3)
+
+
 def get_exit_code(status):
     return {
         "HEALTHY": EXIT_HEALTHY,
