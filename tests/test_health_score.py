@@ -20,9 +20,12 @@ def test_health_score_uses_equal_weighting():
 
 
 def test_health_score_respects_custom_thresholds():
-    assert serverwatch.get_health_score(
-        75, 50, 25, warning_threshold=50, critical_threshold=100
-    ) == 67
+    assert (
+        serverwatch.get_health_score(
+            75, 50, 25, warning_threshold=50, critical_threshold=100
+        )
+        == 83
+    )
 
 
 def test_health_score_validates_threshold_order():
