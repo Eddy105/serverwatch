@@ -14,6 +14,7 @@ from .collectors import (
     get_network_io,
     get_network_status,
     get_process_count,
+    get_processes,
     get_swap_usage,
     get_system_info,
     get_temperatures,
@@ -47,6 +48,7 @@ __all__ = (
     "get_network_io",
     "get_network_status",
     "get_process_count",
+    "get_processes",
     "get_selected_metric",
     "get_status",
     "get_swap_usage",
@@ -113,6 +115,7 @@ def main():
             "get_disk_io",
             "get_temperatures",
             "get_process_count",
+            "get_processes",
             "get_system_info",
             "get_uptime_seconds",
             "get_load_average",
@@ -137,6 +140,10 @@ def main():
             args.watch = False
         if not hasattr(args, "network_status"):
             args.network_status = False
+        if not hasattr(args, "sort"):
+            args.sort = None
+        if not hasattr(args, "top"):
+            args.top = 10
         return args
 
     try:

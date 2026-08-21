@@ -19,6 +19,7 @@ get_inode_usage = collectors.get_inode_usage
 get_disk_io = collectors.get_disk_io
 get_temperatures = collectors.get_temperatures
 get_process_count = collectors.get_process_count
+get_processes = collectors.get_processes
 get_system_info = collectors.get_system_info
 get_uptime_seconds = collectors.get_uptime_seconds
 get_load_average = collectors.get_load_average
@@ -41,6 +42,7 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "uptime_seconds": get_uptime_seconds(),
         "load_average": get_load_average(),
         "network": get_network_io(),
+        "network_status": get_network_status(),
         "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
     }
 
@@ -59,7 +61,7 @@ def parse_arguments():
         ("--inodes", "Show inode usage for --disk-path only."),
         ("--disk-io", "Show aggregate disk I/O counters only."),
         ("--temperatures", "Show hardware temperatures only."),
-        ("--processes", "Show process count only."),
+        ("--processes", "Show process count or process details."),
         ("--system", "Show host and system information only."),
         ("--uptime", "Show system uptime only."),
         ("--load", "Show load averages only."),
@@ -79,6 +81,18 @@ def parse_arguments():
         default=5.0,
         metavar="SECONDS",
         help="Watch refresh interval in seconds (default: 5).",
+    )
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=10,
+        metavar="N",
+        help="Number of processes shown with --processes --sort (default: 10).",
+    )
+    parser.add_argument(
+        "--sort",
+        choices=("cpu", "memory"),
+        help="Sort process details by CPU or memory usage.",
     )
     parser.add_argument(
         "--disk-path",
@@ -122,6 +136,15 @@ def validate_interval(interval):
         raise ValueError("interval must be greater than 0")
 
 
+def validate_process_options(args):
+    if getattr(args, "top", 10) <= 0:
+        raise ValueError("process limit must be greater than 0")
+    if getattr(args, "sort", None) and not getattr(args, "processes", False):
+        raise ValueError("--sort requires --processes")
+    if getattr(args, "top", 10) != 10 and not getattr(args, "processes", False):
+        raise ValueError("--top requires --processes")
+
+
 def print_metric(label, value):
     print(f"{label}: {value:.1f} %")
 
@@ -138,6 +161,12 @@ def get_selected_metric(args):
     if getattr(args, "network_interface", None):
         network_getter = partial(get_network_io, args.network_interface)
 
+    process_details = getattr(args, "sort", None) is not None
+    process_getter = partial(
+        get_processes,
+        getattr(args, "top", 10),
+        getattr(args, "sort", None) or "cpu",
+    )
     selectors = (
         ("cpu", getattr(args, "cpu", False), get_cpu_usage),
         ("memory", getattr(args, "memory", False), get_memory_usage),
@@ -158,6 +187,11 @@ def get_selected_metric(args):
             "temperatures",
             getattr(args, "temperatures", False),
             get_temperatures,
+        ),
+        (
+            "processes",
+            getattr(args, "processes", False) and process_details,
+            process_getter,
         ),
         ("processes", getattr(args, "processes", False), get_process_count),
         ("system", getattr(args, "system", False), get_system_info),
@@ -230,7 +264,13 @@ def print_selected_metric(
                 f"{sensor['current']:.1f} °C{suffix}"
             )
     elif name == "processes":
-        print(f"Processes: {value}")
+        for process in value:
+            print(
+                f"{process['pid']:>6} {process['user']:<16} "
+                f"CPU {process['cpu_percent']:>5.1f}% "
+                f"MEM {process['memory_percent']:>5.1f}% "
+                f"{process['name']}"
+            )
     elif name == "system":
         print(f"Hostname:     {value['hostname']}")
         print(f"System:       {value['system']}")
@@ -325,10 +365,13 @@ def main():
     try:
         validate_thresholds(args.warning, args.critical)
         validate_interval(getattr(args, "interval", 5.0))
+        validate_process_options(args)
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
+    if getattr(args, "network_interface", None) and not getattr(
+        args, "network", False
+    ):
         raise SystemExit("serverwatch: error: --network-interface requires --network")
 
     try:
