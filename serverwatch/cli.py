@@ -299,10 +299,7 @@ def print_selected_metric(
     elif name == "uptime_seconds":
         print(f"Uptime: {format_uptime(value)}")
     elif name == "load_average":
-        print(
-            f"Load average: {value['1m']:.2f} "
-            f"{value['5m']:.2f} {value['15m']:.2f}"
-        )
+        print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
     elif name == "network":
         suffix = f" ({network_interface})" if network_interface else ""
         print(f"Network RX{suffix}: {value['bytes_received']} bytes")
