@@ -83,14 +83,16 @@ def test_process_selector_returns_details(monkeypatch):
     monkeypatch.setattr(
         cli,
         "get_processes",
-        lambda limit, sort_by: [{
-            "pid": 10,
-            "user": "root",
-            "name": "worker",
-            "cpu_percent": 50.0,
-            "memory_percent": 2.0,
-            "command": "worker --test",
-        }],
+        lambda limit, sort_by: [
+            {
+                "pid": 10,
+                "user": "root",
+                "name": "worker",
+                "cpu_percent": 50.0,
+                "memory_percent": 2.0,
+                "command": "worker --test",
+            }
+        ],
     )
 
     args = cli.parse_arguments()
