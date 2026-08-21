@@ -106,37 +106,35 @@ def main():
     # Keep the historical top-level API patchable for integrations and tests.
     original_parse_arguments = _cli.parse_arguments
     original_cli_collect_metrics = _cli.collect_metrics
-    original_functions = {
-        name: getattr(_cli, name)
-        for name in (
-            "validate_thresholds",
-            "validate_interval",
-            "collect_metrics",
-            "get_cpu_usage",
-            "get_memory_usage",
-            "get_swap_usage",
-            "get_disk_usage",
-            "get_filesystems",
-            "get_inode_usage",
-            "get_disk_io",
-            "get_temperatures",
-            "get_process_count",
-            "get_processes",
-            "get_system_info",
-            "get_uptime_seconds",
-            "get_load_average",
-            "get_network_io",
-            "get_network_status",
-            "get_status",
-            "get_exit_code",
-            "get_selected_metric",
-            "print_metric",
-            "format_uptime",
-            "print_selected_metric",
-            "print_human_readable",
-            "run_watch",
-        )
-    }
+    function_names = (
+        "validate_thresholds",
+        "validate_interval",
+        "collect_metrics",
+        "get_cpu_usage",
+        "get_memory_usage",
+        "get_swap_usage",
+        "get_disk_usage",
+        "get_filesystems",
+        "get_inode_usage",
+        "get_disk_io",
+        "get_temperatures",
+        "get_process_count",
+        "get_processes",
+        "get_system_info",
+        "get_uptime_seconds",
+        "get_load_average",
+        "get_network_io",
+        "get_network_status",
+        "get_status",
+        "get_exit_code",
+        "get_selected_metric",
+        "print_metric",
+        "format_uptime",
+        "print_selected_metric",
+        "print_human_readable",
+        "run_watch",
+    )
+    original_functions = {name: getattr(_cli, name) for name in function_names}
 
     patched_collect_metrics = globals()["collect_metrics"]
 
@@ -163,7 +161,10 @@ def main():
         )
         return metrics
 
-    original_functions["collect_metrics"] = collect_metrics_compat
+    patched_functions = {
+        name: globals().get(name, original_functions[name]) for name in function_names
+    }
+    patched_functions["collect_metrics"] = collect_metrics_compat
 
     def parse_arguments_compat():
         args = parse_arguments()
@@ -180,16 +181,15 @@ def main():
         return args
 
     try:
-        for name in original_functions:
-            setattr(_cli, name, original_functions[name])
+        for name, function in patched_functions.items():
+            setattr(_cli, name, function)
         _cli.parse_arguments = parse_arguments_compat
         return _cli.main()
     finally:
         _cli.parse_arguments = original_parse_arguments
         _cli.collect_metrics = original_cli_collect_metrics
         for name, function in original_functions.items():
-            if name != "collect_metrics":
-                setattr(_cli, name, function)
+            setattr(_cli, name, function)
 
 
 print_metric = _cli.print_metric
