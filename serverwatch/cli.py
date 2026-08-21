@@ -327,8 +327,12 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
-        raise SystemExit("serverwatch: error: --network-interface requires --network")
+    if getattr(args, "network_interface", None) and not getattr(
+        args, "network", False
+    ):
+        raise SystemExit(
+            "serverwatch: error: --network-interface requires --network"
+        )
 
     try:
         if getattr(args, "status", False):
