@@ -39,7 +39,11 @@ def test_network_status_collects_interface_state(monkeypatch):
 
 
 def test_network_status_selector_json(monkeypatch, capsys):
-    monkeypatch.setattr(sys, "argv", ["serverwatch", "--network-status", "--json"])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["serverwatch", "--network-status", "--json"],
+    )
     monkeypatch.setattr(
         cli,
         "get_network_status",
