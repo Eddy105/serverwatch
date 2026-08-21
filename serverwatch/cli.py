@@ -4,7 +4,7 @@ import time
 from functools import partial
 
 from . import collectors
-from .health import EXIT_HEALTHY, get_exit_code, get_status
+from .health import EXIT_HEALTHY, get_exit_code, get_health_score, get_status
 
 DiskIoUnavailableError = collectors.DiskIoUnavailableError
 NetworkInterfaceError = collectors.NetworkInterfaceError
@@ -44,6 +44,9 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "network": get_network_io(),
         "network_status": get_network_status(),
         "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
+        "health_score": get_health_score(
+            cpu, memory, disk, warning_threshold, critical_threshold
+        ),
     }
 
 
@@ -345,6 +348,7 @@ def print_human_readable(metrics):
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
+    print(f"Health score: {metrics['health_score']}/100")
     print(f"Status: {metrics['status']}")
 
 
@@ -382,7 +386,15 @@ def main():
         if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
             if args.json:
-                print(json.dumps({"status": metrics["status"]}, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "status": metrics["status"],
+                            "health_score": metrics["health_score"],
+                        },
+                        indent=2,
+                    )
+                )
             else:
                 print(metrics["status"])
             return get_exit_code(metrics["status"])
