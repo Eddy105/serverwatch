@@ -214,7 +214,11 @@ def get_selected_metric(args):
         ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
         ("load_average", getattr(args, "load", False), get_load_average),
         ("network", getattr(args, "network", False), network_getter),
-        ("network_status", getattr(args, "network_status", False), get_network_status),
+        (
+            "network_status",
+            getattr(args, "network_status", False),
+            get_network_status,
+        ),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -295,7 +299,10 @@ def print_selected_metric(
     elif name == "uptime_seconds":
         print(f"Uptime: {format_uptime(value)}")
     elif name == "load_average":
-        print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
+        print(
+            f"Load average: {value['1m']:.2f} "
+            f"{value['5m']:.2f} {value['15m']:.2f}"
+        )
     elif name == "network":
         suffix = f" ({network_interface})" if network_interface else ""
         print(f"Network RX{suffix}: {value['bytes_received']} bytes")
@@ -353,7 +360,10 @@ def print_human_readable(metrics):
     print_metric("Memory usage", metrics["memory"])
     print_metric("Swap usage  ", swap["percent"])
     print_metric(f"Disk usage ({metrics['disk_path']})", metrics["disk"])
-    print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
+    print(
+        f"Load average: {load['1m']:.2f} "
+        f"{load['5m']:.2f} {load['15m']:.2f}"
+    )
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
@@ -385,7 +395,9 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
+    if getattr(args, "network_interface", None) and not getattr(
+        args, "network", False
+    ):
         raise SystemExit("serverwatch: error: --network-interface requires --network")
 
     try:
@@ -395,15 +407,13 @@ def main():
         if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
             if args.json:
-                print(
-                    json.dumps(
-                        {
-                            "status": metrics["status"],
-                            "health_score": metrics["health_score"],
-                        },
-                        indent=2,
-                    )
+                payload = {"status": metrics["status"]}
+                score = get_health_score_for_metrics(
+                    metrics, args.warning, args.critical
                 )
+                if score is not None:
+                    payload["health_score"] = score
+                print(json.dumps(payload, indent=2))
             else:
                 print(metrics["status"])
             return get_exit_code(metrics["status"])
