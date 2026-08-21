@@ -34,7 +34,6 @@ __all__ = (
     "EXIT_CRITICAL",
     "EXIT_HEALTHY",
     "EXIT_WARNING",
-    "collect_for_args",
     "collect_metrics",
     "format_uptime",
     "get_cpu_usage",
@@ -126,7 +125,6 @@ def main():
             "format_uptime",
             "print_selected_metric",
             "print_human_readable",
-            "collect_for_args",
             "run_watch",
         )
     }
@@ -157,5 +155,4 @@ format_uptime = _cli.format_uptime
 get_selected_metric = _cli.get_selected_metric
 print_selected_metric = _cli.print_selected_metric
 print_human_readable = _cli.print_human_readable
-collect_for_args = _cli.collect_for_args
 run_watch = _cli.run_watch
