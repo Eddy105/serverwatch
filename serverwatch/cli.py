@@ -42,7 +42,9 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "load_average": get_load_average(),
         "network": get_network_io(),
         "network_status": get_network_status(),
-        "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
+        "status": get_status(
+            cpu, memory, disk, warning_threshold, critical_threshold
+        ),
     }
 
 
@@ -70,7 +72,9 @@ def parse_arguments():
     )
     for option, help_text in metric_options:
         metric_group.add_argument(option, action="store_true", help=help_text)
-    parser.add_argument("--json", action="store_true", help="Output metrics as JSON.")
+    parser.add_argument(
+        "--json", action="store_true", help="Output metrics as JSON."
+    )
     parser.add_argument(
         "--watch", action="store_true", help="Continuously refresh the selected view."
     )
@@ -333,8 +337,12 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
-        raise SystemExit("serverwatch: error: --network-interface requires --network")
+    if getattr(args, "network_interface", None) and not getattr(
+        args, "network", False
+    ):
+        raise SystemExit(
+            "serverwatch: error: --network-interface requires --network"
+        )
 
     try:
         if getattr(args, "status", False):
