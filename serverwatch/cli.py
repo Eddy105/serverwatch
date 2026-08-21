@@ -23,6 +23,7 @@ get_system_info = collectors.get_system_info
 get_uptime_seconds = collectors.get_uptime_seconds
 get_load_average = collectors.get_load_average
 get_network_io = collectors.get_network_io
+get_network_status = collectors.get_network_status
 
 
 def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="/"):
@@ -63,6 +64,7 @@ def parse_arguments():
         ("--uptime", "Show system uptime only."),
         ("--load", "Show load averages only."),
         ("--network", "Show network I/O counters only."),
+        ("--network-status", "Show network interface link status only."),
         ("--status", "Show health status only."),
     )
     for option, help_text in metric_options:
@@ -76,7 +78,7 @@ def parse_arguments():
         type=float,
         default=5.0,
         metavar="SECONDS",
-        help="Refresh interval for --watch (default: 5).",
+        help="Watch refresh interval in seconds (default: 5).",
     )
     parser.add_argument(
         "--disk-path",
@@ -117,7 +119,7 @@ def validate_thresholds(warning_threshold, critical_threshold):
 
 def validate_interval(interval):
     if interval <= 0:
-        raise ValueError("watch interval must be greater than 0")
+        raise ValueError("interval must be greater than 0")
 
 
 def print_metric(label, value):
@@ -162,6 +164,11 @@ def get_selected_metric(args):
         ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
         ("load_average", getattr(args, "load", False), get_load_average),
         ("network", getattr(args, "network", False), network_getter),
+        (
+            "network_status",
+            getattr(args, "network_status", False),
+            get_network_status,
+        ),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -240,6 +247,38 @@ def print_selected_metric(
         print(f"Network TX{suffix}: {value['bytes_sent']} bytes")
         print(f"Packets RX{suffix}: {value['packets_received']}")
         print(f"Packets TX{suffix}: {value['packets_sent']}")
+    elif name == "network_status":
+        for interface in value:
+            speed = interface["speed_mbps"]
+            speed_text = f"{speed} Mbps" if speed is not None else "unknown speed"
+            state = "UP" if interface["is_up"] else "DOWN"
+            print(
+                f"{interface['interface']}: {state} {speed_text}, "
+                f"MTU {interface['mtu']}"
+            )
+
+
+def render_selected(args, selected_metric):
+    name, value = selected_metric
+    print_selected_metric(
+        name,
+        value,
+        getattr(args, "json", False),
+        getattr(args, "disk_path", "/"),
+        getattr(args, "network_interface", None),
+    )
+
+
+def collect_for_args(args):
+    """Collect and render one CLI iteration for watch mode."""
+    selected_metric = get_selected_metric(args)
+    if selected_metric is not None:
+        render_selected(args, selected_metric)
+        return EXIT_HEALTHY
+
+    metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+    print_human_readable(metrics)
+    return get_exit_code(metrics["status"])
 
 
 def print_human_readable(metrics):
@@ -266,48 +305,26 @@ def print_human_readable(metrics):
     print(f"Status: {metrics['status']}")
 
 
-def collect_for_args(args):
-    selected_metric = get_selected_metric(args)
-    if selected_metric is not None:
-        name, value = selected_metric
-        print_selected_metric(
-            name,
-            value,
-            args.json,
-            args.disk_path,
-            getattr(args, "network_interface", None),
-        )
-        return EXIT_HEALTHY
-
-    metrics = collect_metrics(args.warning, args.critical, args.disk_path)
-    if args.json:
-        print(json.dumps(metrics, indent=2))
-    else:
-        print_human_readable(metrics)
-    return get_exit_code(metrics["status"])
-
-
 def run_watch(args):
-    if args.json:
+    interval = getattr(args, "interval", 5.0)
+    validate_interval(interval)
+    if getattr(args, "json", False):
         raise ValueError("--watch cannot be combined with --json")
 
-    last_exit_code = EXIT_HEALTHY
-    try:
-        while True:
-            print("\033[2J\033[H", end="")
-            last_exit_code = collect_for_args(args)
-            print(f"\nRefreshing every {args.interval:g}s. Press Ctrl+C to stop.")
-            time.sleep(args.interval)
-    except KeyboardInterrupt:
-        print("\nWatch stopped.")
-    return last_exit_code
+    while True:
+        status = collect_for_args(args)
+        try:
+            time.sleep(interval)
+        except KeyboardInterrupt:
+            print("Watch stopped.")
+            return status
 
 
 def main():
     args = parse_arguments()
     try:
         validate_thresholds(args.warning, args.critical)
-        validate_interval(args.interval)
+        validate_interval(getattr(args, "interval", 5.0))
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
@@ -315,6 +332,9 @@ def main():
         raise SystemExit("serverwatch: error: --network-interface requires --network")
 
     try:
+        if getattr(args, "watch", False):
+            return run_watch(args)
+
         if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
             if args.json:
@@ -323,10 +343,12 @@ def main():
                 print(metrics["status"])
             return get_exit_code(metrics["status"])
 
-        if args.watch:
-            return run_watch(args)
+        selected_metric = get_selected_metric(args)
+        if selected_metric is not None:
+            render_selected(args, selected_metric)
+            return EXIT_HEALTHY
 
-        return collect_for_args(args)
+        metrics = collect_metrics(args.warning, args.critical, args.disk_path)
     except (
         DiskIoUnavailableError,
         TemperatureUnavailableError,
@@ -338,6 +360,8 @@ def main():
             f"serverwatch: error: cannot read disk path {args.disk_path!r}: {error}"
         ) from error
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    if args.json:
+        print(json.dumps(metrics, indent=2))
+    else:
+        print_human_readable(metrics)
+    return get_exit_code(metrics["status"])
