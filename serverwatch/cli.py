@@ -50,16 +50,23 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
     }
 
 
-def get_health_score_for_metrics(metrics, warning_threshold=75.0, critical_threshold=90.0):
-    return metrics.get(
-        "health_score",
-        get_health_score(
-            metrics["cpu"],
-            metrics["memory"],
-            metrics["disk"],
-            warning_threshold,
-            critical_threshold,
-        ),
+def get_health_score_for_metrics(
+    metrics, warning_threshold=75.0, critical_threshold=90.0
+):
+    score = metrics.get("health_score")
+    if score is not None:
+        return score
+
+    required = ("cpu", "memory", "disk")
+    if not all(key in metrics for key in required):
+        return None
+
+    return get_health_score(
+        metrics["cpu"],
+        metrics["memory"],
+        metrics["disk"],
+        warning_threshold,
+        critical_threshold,
     )
 
 
@@ -214,7 +221,11 @@ def get_selected_metric(args):
         ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
         ("load_average", getattr(args, "load", False), get_load_average),
         ("network", getattr(args, "network", False), network_getter),
-        ("network_status", getattr(args, "network_status", False), get_network_status),
+        (
+            "network_status",
+            getattr(args, "network_status", False),
+            get_network_status,
+        ),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -341,8 +352,43 @@ def print_human_readable(metrics):
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
-    print(f"Health score: {health_score}/100")
+    if health_score is not None:
+        print(f"Health score: {health_score}/100")
     print(f"Status: {metrics['status']}")
+
+
+def collect_for_args(args):
+    if getattr(args, "status", False):
+        metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+        health_score = get_health_score_for_metrics(
+            metrics, args.warning, args.critical
+        )
+        if args.json:
+            payload = {"status": metrics["status"]}
+            if health_score is not None:
+                payload["health_score"] = health_score
+            print(json.dumps(payload, indent=2))
+        else:
+            print(metrics["status"])
+        return get_exit_code(metrics["status"])
+
+    selected_metric = get_selected_metric(args)
+    if selected_metric is not None:
+        print_selected_metric(
+            selected_metric[0],
+            selected_metric[1],
+            args.json,
+            args.disk_path,
+            getattr(args, "network_interface", None),
+        )
+        return EXIT_HEALTHY
+
+    metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+    if args.json:
+        print(json.dumps(metrics, indent=2))
+    else:
+        print_human_readable(metrics)
+    return get_exit_code(metrics["status"])
 
 
 def run_watch(args):
@@ -384,15 +430,10 @@ def main():
                 metrics, args.warning, args.critical
             )
             if args.json:
-                print(
-                    json.dumps(
-                        {
-                            "status": metrics["status"],
-                            "health_score": health_score,
-                        },
-                        indent=2,
-                    )
-                )
+                payload = {"status": metrics["status"]}
+                if health_score is not None:
+                    payload["health_score"] = health_score
+                print(json.dumps(payload, indent=2))
             else:
                 print(metrics["status"])
             return get_exit_code(metrics["status"])
