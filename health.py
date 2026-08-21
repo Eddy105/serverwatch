@@ -28,10 +28,8 @@ def get_health_score(
             return 100.0
         if usage >= critical_threshold:
             return 0.0
-        return (
-            100.0
-            * (critical_threshold - usage)
-            / (critical_threshold - warning_threshold)
+        return 100.0 * (critical_threshold - usage) / (
+            critical_threshold - warning_threshold
         )
 
     return round(sum(score_usage(value) for value in (cpu, memory, disk)) / 3)
