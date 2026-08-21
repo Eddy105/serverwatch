@@ -116,11 +116,7 @@ def get_processes(limit=10, sort_by="cpu"):
         raise ValueError("process sort must be 'cpu' or 'memory'")
 
     processes = []
-    candidates = list(
-        psutil.process_iter(
-            ["pid", "username", "name", "memory_percent", "cmdline"]
-        )
-    )
+    candidates = list(psutil.process_iter(["pid", "username", "name", "memory_percent", "cmdline"]))
     for process in candidates:
         try:
             process.cpu_percent(interval=None)
