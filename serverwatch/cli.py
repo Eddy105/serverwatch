@@ -4,7 +4,7 @@ import time
 from functools import partial
 
 from . import collectors
-from .health import EXIT_HEALTHY, get_exit_code, get_status
+from .health import EXIT_HEALTHY, get_exit_code, get_health_score, get_status
 
 DiskIoUnavailableError = collectors.DiskIoUnavailableError
 NetworkInterfaceError = collectors.NetworkInterfaceError
@@ -44,7 +44,27 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "network": get_network_io(),
         "network_status": get_network_status(),
         "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
+        "health_score": get_health_score(
+            cpu, memory, disk, warning_threshold, critical_threshold
+        ),
     }
+
+
+def get_health_score_for_metrics(
+    metrics, warning_threshold=75.0, critical_threshold=90.0
+):
+    score = metrics.get("health_score")
+    if score is not None:
+        return score
+    if not all(key in metrics for key in ("cpu", "memory", "disk")):
+        return None
+    return get_health_score(
+        metrics["cpu"],
+        metrics["memory"],
+        metrics["disk"],
+        warning_threshold,
+        critical_threshold,
+    )
 
 
 def parse_arguments():
@@ -183,11 +203,7 @@ def get_selected_metric(args):
             partial(get_inode_usage, args.disk_path),
         ),
         ("disk_io", getattr(args, "disk_io", False), get_disk_io),
-        (
-            "temperatures",
-            getattr(args, "temperatures", False),
-            get_temperatures,
-        ),
+        ("temperatures", getattr(args, "temperatures", False), get_temperatures),
         (
             "processes",
             getattr(args, "processes", False) and process_details,
@@ -198,11 +214,7 @@ def get_selected_metric(args):
         ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
         ("load_average", getattr(args, "load", False), get_load_average),
         ("network", getattr(args, "network", False), network_getter),
-        (
-            "network_status",
-            getattr(args, "network_status", False),
-            get_network_status,
-        ),
+        ("network_status", getattr(args, "network_status", False), get_network_status),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -345,6 +357,7 @@ def print_human_readable(metrics):
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
+    print(f"Health score: {metrics['health_score']}/100")
     print(f"Status: {metrics['status']}")
 
 
@@ -382,7 +395,15 @@ def main():
         if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
             if args.json:
-                print(json.dumps({"status": metrics["status"]}, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "status": metrics["status"],
+                            "health_score": metrics["health_score"],
+                        },
+                        indent=2,
+                    )
+                )
             else:
                 print(metrics["status"])
             return get_exit_code(metrics["status"])
