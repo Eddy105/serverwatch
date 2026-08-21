@@ -105,6 +105,7 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
 def main():
     # Keep the historical top-level API patchable for integrations and tests.
     original_parse_arguments = _cli.parse_arguments
+    original_cli_collect_metrics = _cli.collect_metrics
     original_functions = {
         name: getattr(_cli, name)
         for name in (
@@ -137,10 +138,10 @@ def main():
         )
     }
 
-    original_collect_metrics = original_functions["collect_metrics"]
+    patched_collect_metrics = globals()["collect_metrics"]
 
     def collect_metrics_compat(*args, **kwargs):
-        metrics = original_collect_metrics(*args, **kwargs)
+        metrics = patched_collect_metrics(*args, **kwargs)
         if "health_score" in metrics:
             return metrics
         if not all(key in metrics for key in ("cpu", "memory", "disk")):
@@ -180,15 +181,14 @@ def main():
 
     try:
         for name in original_functions:
-            setattr(_cli, name, original_functions[name] if name == "collect_metrics" else globals()[name])
+            setattr(_cli, name, original_functions[name])
         _cli.parse_arguments = parse_arguments_compat
         return _cli.main()
     finally:
         _cli.parse_arguments = original_parse_arguments
+        _cli.collect_metrics = original_cli_collect_metrics
         for name, function in original_functions.items():
-            if name == "collect_metrics":
-                setattr(_cli, name, original_collect_metrics)
-            else:
+            if name != "collect_metrics":
                 setattr(_cli, name, function)
 
 
