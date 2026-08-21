@@ -134,15 +134,15 @@ def get_processes(limit=10, sort_by="cpu"):
                     "pid": info["pid"],
                     "user": info.get("username") or "-",
                     "name": info.get("name") or "-",
-                    "cpu": process.cpu_percent(interval=None),
-                    "memory": info.get("memory_percent") or 0.0,
+                    "cpu_percent": process.cpu_percent(interval=None),
+                    "memory_percent": info.get("memory_percent") or 0.0,
                     "command": " ".join(command) if command else "-",
                 }
             )
         except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
             continue
 
-    key = "cpu" if sort_by == "cpu" else "memory"
+    key = "cpu_percent" if sort_by == "cpu" else "memory_percent"
     return sorted(processes, key=lambda item: item[key], reverse=True)[:limit]
 
 
