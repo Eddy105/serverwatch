@@ -413,16 +413,13 @@ def main():
         raise SystemExit(f"serverwatch: error: {error}") from error
     except OSError as error:
         raise SystemExit(
-            f"serverwatch: error: cannot read disk path "
-            f"{args.disk_path!r}: {error}"
+            f"serverwatch: error: cannot read disk path {args.disk_path!r}: {error}"
         ) from error
 
     if getattr(args, "status", False):
         if args.json:
             payload = {"status": metrics["status"]}
-            score = get_health_score_for_metrics(
-                metrics, args.warning, args.critical
-            )
+            score = get_health_score_for_metrics(metrics, args.warning, args.critical)
             if score is not None:
                 payload["health_score"] = score
             print(json.dumps(payload, indent=2))
