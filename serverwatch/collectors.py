@@ -5,9 +5,17 @@ import time
 
 import psutil
 
-DiskIoUnavailableError = ValueError
-NetworkInterfaceError = ValueError
-TemperatureUnavailableError = ValueError
+
+class NetworkInterfaceError(ValueError):
+    """Raised when a requested network interface does not exist."""
+
+
+class DiskIoUnavailableError(ValueError):
+    """Raised when disk I/O counters are not available."""
+
+
+class TemperatureUnavailableError(ValueError):
+    """Raised when hardware temperature sensors are unavailable."""
 
 
 def get_cpu_usage():
@@ -59,20 +67,13 @@ def get_inode_usage(path="/"):
     free = stats.f_ffree
     used = max(0, total - free)
     percent = 0.0 if total == 0 else used / total * 100
-
-    return {
-        "total": total,
-        "used": used,
-        "free": free,
-        "percent": percent,
-    }
+    return {"total": total, "used": used, "free": free, "percent": percent}
 
 
 def get_disk_io():
     counters = psutil.disk_io_counters()
     if counters is None:
         raise DiskIoUnavailableError("disk I/O counters are not available")
-
     return {
         "read_count": counters.read_count,
         "write_count": counters.write_count,
@@ -85,7 +86,6 @@ def get_temperatures():
     sensor_getter = getattr(psutil, "sensors_temperatures", None)
     if sensor_getter is None:
         raise TemperatureUnavailableError("temperature sensors are not supported")
-
     sensor_groups = sensor_getter()
     readings = []
     for chip, sensors in sensor_groups.items():
@@ -99,10 +99,8 @@ def get_temperatures():
                     "critical": sensor.critical,
                 }
             )
-
     if not readings:
         raise TemperatureUnavailableError("temperature sensors are not available")
-
     return readings
 
 
@@ -178,7 +176,6 @@ def get_network_io(interface=None):
             raise NetworkInterfaceError(
                 f"network interface {interface!r} was not found"
             ) from error
-
     return {
         "bytes_sent": counters.bytes_sent,
         "bytes_received": counters.bytes_recv,
@@ -188,17 +185,15 @@ def get_network_io(interface=None):
 
 
 def get_network_status():
-    statuses = []
-    addresses = psutil.net_if_addrs()
+    """Return operational state and link information for network interfaces."""
     stats = psutil.net_if_stats()
-    for interface, info in stats.items():
-        statuses.append(
-            {
-                "interface": interface,
-                "is_up": info.isup,
-                "speed_mbps": info.speed,
-                "mtu": info.mtu,
-                "addresses": [address.address for address in addresses.get(interface, [])],
-            }
-        )
-    return statuses
+    return [
+        {
+            "interface": interface,
+            "is_up": info.isup,
+            "speed_mbps": info.speed,
+            "duplex": str(info.duplex),
+            "mtu": info.mtu,
+        }
+        for interface, info in sorted(stats.items())
+    ]
