@@ -5,7 +5,6 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 ## Features
 
 - CPU, memory, swap, disk, and process count monitoring
-- Top process inspection with CPU or memory sorting
 - Filesystem-aware disk and inode checks for arbitrary paths and mount points
 - Mounted filesystem overview with capacity and usage details
 - Aggregate disk I/O counters for read/write activity
@@ -13,10 +12,8 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 - Host, kernel, architecture, and CPU information
 - System uptime and load averages
 - Aggregate and per-interface network I/O counters
-- Network interface link status, speed, duplex, and MTU
 - Human-readable and JSON output
 - Individual metric selectors
-- Continuous watch mode with configurable refresh interval
 - Focused health-status output for scripts and monitoring checks
 - Configurable warning and critical thresholds
 - Monitoring-friendly exit codes
@@ -80,34 +77,7 @@ serverwatch --system
 serverwatch --uptime
 serverwatch --load
 serverwatch --network
-serverwatch --network-status
 ```
-
-Inspect the most resource-intensive processes:
-
-```bash
-serverwatch --processes --sort cpu
-serverwatch --processes --sort memory --top 5
-serverwatch --processes --sort cpu --top 10 --json
-```
-
-The original `serverwatch --processes` behavior is preserved and reports the total process count. Adding `--sort` switches to a bounded process table containing PID, user, CPU usage, memory usage, process name, and command line. `--top` controls the number of rows and defaults to 10.
-
-Continuously refresh the complete system overview:
-
-```bash
-serverwatch --watch
-serverwatch --watch --interval 2
-```
-
-Watch a single metric:
-
-```bash
-serverwatch --cpu --watch --interval 1
-serverwatch --memory --watch --interval 2
-```
-
-Watch mode refreshes the terminal in place and stops cleanly with `Ctrl+C`. It is intended for interactive terminal use and cannot be combined with `--json`.
 
 Return only the current health state while preserving monitoring exit codes:
 
@@ -196,15 +166,6 @@ serverwatch --network --network-interface enp3s0 --json
 
 `--network-interface` is intentionally tied to the `--network` selector. Unknown interface names fail with a clear error instead of silently returning aggregate counters. JSON output includes the selected interface name.
 
-Inspect network interface link state:
-
-```bash
-serverwatch --network-status
-serverwatch --network-status --json
-```
-
-This reports interface state, reported link speed, duplex mode, and MTU. It is informational and does not change the overall health status.
-
 All selectors support machine-readable JSON output:
 
 ```bash
@@ -261,7 +222,7 @@ The full system check and `--status` return monitoring-friendly process exit cod
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, process details, filesystem overview, inode usage, disk I/O counters, temperature readings, and network status are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
+Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, filesystem overview, inode usage, disk I/O counters, and temperature readings are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 

@@ -108,44 +108,6 @@ def get_process_count():
     return len(psutil.pids())
 
 
-def get_processes(limit=10, sort_by="cpu"):
-    """Return a bounded process snapshot sorted by CPU or memory usage."""
-    if limit <= 0:
-        raise ValueError("process limit must be greater than 0")
-    if sort_by not in {"cpu", "memory"}:
-        raise ValueError("process sort must be 'cpu' or 'memory'")
-
-    processes = []
-    attrs = ["pid", "username", "name", "memory_percent", "cmdline"]
-    candidates = list(psutil.process_iter(attrs))
-    for process in candidates:
-        try:
-            process.cpu_percent(interval=None)
-        except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
-            continue
-
-    time.sleep(0.1)
-    for process in candidates:
-        try:
-            info = process.info
-            command = info.get("cmdline") or []
-            processes.append(
-                {
-                    "pid": info["pid"],
-                    "user": info.get("username") or "-",
-                    "name": info.get("name") or "-",
-                    "cpu_percent": process.cpu_percent(interval=None),
-                    "memory_percent": info.get("memory_percent") or 0.0,
-                    "command": " ".join(command) if command else "-",
-                }
-            )
-        except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
-            continue
-
-    key = "cpu_percent" if sort_by == "cpu" else "memory_percent"
-    return sorted(processes, key=lambda item: item[key], reverse=True)[:limit]
-
-
 def get_system_info():
     return {
         "hostname": socket.gethostname(),
@@ -182,18 +144,3 @@ def get_network_io(interface=None):
         "packets_sent": counters.packets_sent,
         "packets_received": counters.packets_recv,
     }
-
-
-def get_network_status():
-    """Return operational state and link information for network interfaces."""
-    stats = psutil.net_if_stats()
-    return [
-        {
-            "interface": interface,
-            "is_up": info.isup,
-            "speed_mbps": info.speed,
-            "duplex": str(info.duplex),
-            "mtu": info.mtu,
-        }
-        for interface, info in sorted(stats.items())
-    ]

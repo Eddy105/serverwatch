@@ -357,10 +357,7 @@ def print_human_readable(metrics):
     print_metric("Memory usage", metrics["memory"])
     print_metric("Swap usage  ", swap["percent"])
     print_metric(f"Disk usage ({metrics['disk_path']})", metrics["disk"])
-    print(
-        f"Load average: {load['1m']:.2f} "
-        f"{load['5m']:.2f} {load['15m']:.2f}"
-    )
+    print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
@@ -392,29 +389,16 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not getattr(
-        args, "network", False
-    ):
+    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
         raise SystemExit("serverwatch: error: --network-interface requires --network")
 
-    try:
-        if getattr(args, "watch", False):
+    if getattr(args, "watch", False):
+        try:
             return run_watch(args)
+        except ValueError as error:
+            raise SystemExit(f"serverwatch: error: {error}") from error
 
-        if getattr(args, "status", False):
-            metrics = collect_metrics(args.warning, args.critical, args.disk_path)
-            if args.json:
-                payload = {"status": metrics["status"]}
-                score = get_health_score_for_metrics(
-                    metrics, args.warning, args.critical
-                )
-                if score is not None:
-                    payload["health_score"] = score
-                print(json.dumps(payload, indent=2))
-            else:
-                print(metrics["status"])
-            return get_exit_code(metrics["status"])
-
+    try:
         selected_metric = get_selected_metric(args)
         if selected_metric is not None:
             render_selected(args, selected_metric)
@@ -429,11 +413,29 @@ def main():
         raise SystemExit(f"serverwatch: error: {error}") from error
     except OSError as error:
         raise SystemExit(
-            f"serverwatch: error: cannot read disk path {args.disk_path!r}: {error}"
+            f"serverwatch: error: cannot read disk path "
+            f"{args.disk_path!r}: {error}"
         ) from error
+
+    if getattr(args, "status", False):
+        if args.json:
+            payload = {"status": metrics["status"]}
+            score = get_health_score_for_metrics(
+                metrics, args.warning, args.critical
+            )
+            if score is not None:
+                payload["health_score"] = score
+            print(json.dumps(payload, indent=2))
+        else:
+            print(metrics["status"])
+        return get_exit_code(metrics["status"])
 
     if args.json:
         print(json.dumps(metrics, indent=2))
     else:
         print_human_readable(metrics)
     return get_exit_code(metrics["status"])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
