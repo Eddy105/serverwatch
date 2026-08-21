@@ -1,5 +1,6 @@
 import argparse
 import json
+import time
 from functools import partial
 
 from . import collectors
@@ -250,10 +251,34 @@ def print_selected_metric(
         for interface in value:
             speed = interface["speed_mbps"]
             speed_text = f"{speed} Mbps" if speed is not None else "unknown speed"
+            state = "UP" if interface["is_up"] else "DOWN"
             print(
-                f"{interface['name']}: {interface['state'].upper()} "
-                f"{speed_text}, MTU {interface['mtu']}"
+                f"{interface['interface']}: {state} {speed_text}, "
+                f"MTU {interface['mtu']}"
             )
+
+
+def render_selected(args, selected_metric):
+    name, value = selected_metric
+    print_selected_metric(
+        name,
+        value,
+        getattr(args, "json", False),
+        getattr(args, "disk_path", "/"),
+        getattr(args, "network_interface", None),
+    )
+
+
+def collect_for_args(args):
+    """Collect and render one CLI iteration for watch mode."""
+    selected_metric = get_selected_metric(args)
+    if selected_metric is not None:
+        render_selected(args, selected_metric)
+        return EXIT_HEALTHY
+
+    metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+    print_human_readable(metrics)
+    return get_exit_code(metrics["status"])
 
 
 def print_human_readable(metrics):
@@ -280,17 +305,6 @@ def print_human_readable(metrics):
     print(f"Status: {metrics['status']}")
 
 
-def render_selected(args, selected_metric):
-    name, value = selected_metric
-    print_selected_metric(
-        name,
-        value,
-        getattr(args, "json", False),
-        getattr(args, "disk_path", "/"),
-        getattr(args, "network_interface", None),
-    )
-
-
 def run_watch(args):
     interval = getattr(args, "interval", 5.0)
     validate_interval(interval)
@@ -298,18 +312,12 @@ def run_watch(args):
         raise ValueError("--watch cannot be combined with --json")
 
     while True:
-        selected_metric = get_selected_metric(args)
-        if selected_metric is None:
-            metrics = collect_metrics(args.warning, args.critical, args.disk_path)
-            print_human_readable(metrics)
-        else:
-            render_selected(args, selected_metric)
+        status = collect_for_args(args)
         try:
-            import time
-
             time.sleep(interval)
         except KeyboardInterrupt:
-            return EXIT_HEALTHY
+            print("Watch stopped.")
+            return status
 
 
 def main():
