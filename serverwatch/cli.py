@@ -50,6 +50,19 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
     }
 
 
+def get_health_score_for_metrics(metrics, warning_threshold=75.0, critical_threshold=90.0):
+    return metrics.get(
+        "health_score",
+        get_health_score(
+            metrics["cpu"],
+            metrics["memory"],
+            metrics["disk"],
+            warning_threshold,
+            critical_threshold,
+        ),
+    )
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Lightweight Linux system monitoring tool."
@@ -201,11 +214,7 @@ def get_selected_metric(args):
         ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
         ("load_average", getattr(args, "load", False), get_load_average),
         ("network", getattr(args, "network", False), network_getter),
-        (
-            "network_status",
-            getattr(args, "network_status", False),
-            get_network_status,
-        ),
+        ("network_status", getattr(args, "network_status", False), get_network_status),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -286,7 +295,10 @@ def print_selected_metric(
     elif name == "uptime_seconds":
         print(f"Uptime: {format_uptime(value)}")
     elif name == "load_average":
-        print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
+        print(
+            f"Load average: {value['1m']:.2f} "
+            f"{value['5m']:.2f} {value['15m']:.2f}"
+        )
     elif name == "network":
         suffix = f" ({network_interface})" if network_interface else ""
         print(f"Network RX{suffix}: {value['bytes_received']} bytes")
@@ -295,36 +307,13 @@ def print_selected_metric(
         print(f"Packets TX{suffix}: {value['packets_sent']}")
     elif name == "network_status":
         for interface in value:
-            speed = interface["speed_mbps"]
-            speed_text = f"{speed} Mbps" if speed is not None else "unknown speed"
             state = "UP" if interface["is_up"] else "DOWN"
+            speed = interface["speed_mbps"]
+            duplex = interface["duplex"]
             print(
-                f"{interface['interface']}: {state} {speed_text}, "
-                f"MTU {interface['mtu']}"
+                f"{interface['interface']}: {state} "
+                f"{speed} Mbps, {duplex}, MTU {interface['mtu']}"
             )
-
-
-def render_selected(args, selected_metric):
-    name, value = selected_metric
-    print_selected_metric(
-        name,
-        value,
-        getattr(args, "json", False),
-        getattr(args, "disk_path", "/"),
-        getattr(args, "network_interface", None),
-    )
-
-
-def collect_for_args(args):
-    """Collect and render one CLI iteration for watch mode."""
-    selected_metric = get_selected_metric(args)
-    if selected_metric is not None:
-        render_selected(args, selected_metric)
-        return EXIT_HEALTHY
-
-    metrics = collect_metrics(args.warning, args.critical, args.disk_path)
-    print_human_readable(metrics)
-    return get_exit_code(metrics["status"])
 
 
 def print_human_readable(metrics):
@@ -332,6 +321,7 @@ def print_human_readable(metrics):
     swap = metrics["swap"]
     load = metrics["load_average"]
     network = metrics["network"]
+    health_score = get_health_score_for_metrics(metrics)
 
     print("SERVERWATCH")
     print("-" * 28)
@@ -344,11 +334,14 @@ def print_human_readable(metrics):
     print_metric("Memory usage", metrics["memory"])
     print_metric("Swap usage  ", swap["percent"])
     print_metric(f"Disk usage ({metrics['disk_path']})", metrics["disk"])
-    print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
+    print(
+        f"Load average: {load['1m']:.2f} "
+        f"{load['5m']:.2f} {load['15m']:.2f}"
+    )
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
-    print(f"Health score: {metrics['health_score']}/100")
+    print(f"Health score: {health_score}/100")
     print(f"Status: {metrics['status']}")
 
 
@@ -376,7 +369,9 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
+    if getattr(args, "network_interface", None) and not getattr(
+        args, "network", False
+    ):
         raise SystemExit("serverwatch: error: --network-interface requires --network")
 
     try:
@@ -385,12 +380,15 @@ def main():
 
         if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+            health_score = get_health_score_for_metrics(
+                metrics, args.warning, args.critical
+            )
             if args.json:
                 print(
                     json.dumps(
                         {
                             "status": metrics["status"],
-                            "health_score": metrics["health_score"],
+                            "health_score": health_score,
                         },
                         indent=2,
                     )
@@ -401,7 +399,13 @@ def main():
 
         selected_metric = get_selected_metric(args)
         if selected_metric is not None:
-            render_selected(args, selected_metric)
+            print_selected_metric(
+                selected_metric[0],
+                selected_metric[1],
+                args.json,
+                args.disk_path,
+                getattr(args, "network_interface", None),
+            )
             return EXIT_HEALTHY
 
         metrics = collect_metrics(args.warning, args.critical, args.disk_path)
@@ -413,7 +417,8 @@ def main():
         raise SystemExit(f"serverwatch: error: {error}") from error
     except OSError as error:
         raise SystemExit(
-            f"serverwatch: error: cannot read disk path {args.disk_path!r}: {error}"
+            f"serverwatch: error: cannot read disk path "
+            f"{args.disk_path!r}: {error}"
         ) from error
 
     if args.json:
