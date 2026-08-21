@@ -137,6 +137,33 @@ def main():
         )
     }
 
+    original_collect_metrics = original_functions["collect_metrics"]
+
+    def collect_metrics_compat(*args, **kwargs):
+        metrics = original_collect_metrics(*args, **kwargs)
+        if "health_score" in metrics:
+            return metrics
+        if not all(key in metrics for key in ("cpu", "memory", "disk")):
+            return metrics
+
+        warning_threshold = kwargs.get(
+            "warning_threshold", args[0] if len(args) > 0 else 75.0
+        )
+        critical_threshold = kwargs.get(
+            "critical_threshold", args[1] if len(args) > 1 else 90.0
+        )
+        metrics = dict(metrics)
+        metrics["health_score"] = get_health_score(
+            metrics["cpu"],
+            metrics["memory"],
+            metrics["disk"],
+            warning_threshold,
+            critical_threshold,
+        )
+        return metrics
+
+    original_functions["collect_metrics"] = collect_metrics_compat
+
     def parse_arguments_compat():
         args = parse_arguments()
         if not hasattr(args, "interval"):
@@ -153,13 +180,16 @@ def main():
 
     try:
         for name in original_functions:
-            setattr(_cli, name, globals()[name])
+            setattr(_cli, name, original_functions[name] if name == "collect_metrics" else globals()[name])
         _cli.parse_arguments = parse_arguments_compat
         return _cli.main()
     finally:
         _cli.parse_arguments = original_parse_arguments
         for name, function in original_functions.items():
-            setattr(_cli, name, function)
+            if name == "collect_metrics":
+                setattr(_cli, name, original_collect_metrics)
+            else:
+                setattr(_cli, name, function)
 
 
 print_metric = _cli.print_metric
