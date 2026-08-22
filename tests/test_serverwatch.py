@@ -13,6 +13,7 @@ from serverwatch import (
     get_disk_io,
     get_disk_usage,
     get_exit_code,
+    get_health_score,
     get_load_average,
     get_memory_usage,
     get_network_io,
@@ -67,6 +68,10 @@ def test_thresholds_must_be_percentages(warning, critical):
 )
 def test_exit_codes(status, expected):
     assert get_exit_code(status) == expected
+
+
+def test_health_score_is_exposed_from_public_api():
+    assert get_health_score(20, 30, 40) == 100
 
 
 def test_metric_helpers_use_psutil(monkeypatch):
@@ -246,6 +251,7 @@ def test_collect_metrics(monkeypatch):
     assert metrics["system"]["hostname"] == "host"
     assert metrics["uptime_seconds"] == 3600
     assert metrics["status"] == "WARNING"
+    assert metrics["health_score"] == 89
 
 
 def test_parse_arguments_defaults(monkeypatch):

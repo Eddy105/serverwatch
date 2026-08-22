@@ -29,6 +29,7 @@ def _metrics(status="HEALTHY", cpu=10.0, disk_path="/"):
             "packets_received": 20,
         },
         "status": status,
+        "health_score": 100,
     }
 
 

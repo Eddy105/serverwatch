@@ -25,7 +25,7 @@ def _args(**overrides):
 
 
 def _metrics(status):
-    return {"status": status}
+    return {"status": status, "health_score": 100}
 
 
 def test_status_selector_prints_status_and_returns_monitoring_exit_code(
@@ -63,4 +63,7 @@ def test_status_selector_supports_json_and_custom_settings(monkeypatch, capsys):
 
     assert serverwatch.main() == serverwatch.EXIT_CRITICAL
     assert calls == [(60.0, 85.0, "/var")]
-    assert json.loads(capsys.readouterr().out) == {"status": "CRITICAL"}
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "CRITICAL",
+        "health_score": 100,
+    }

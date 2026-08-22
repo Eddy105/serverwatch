@@ -25,6 +25,7 @@ from .health import (
     EXIT_HEALTHY,
     EXIT_WARNING,
     get_exit_code,
+    get_health_score,
     get_status,
 )
 
@@ -42,6 +43,7 @@ __all__ = (
     "get_disk_usage",
     "get_exit_code",
     "get_filesystems",
+    "get_health_score",
     "get_inode_usage",
     "get_load_average",
     "get_memory_usage",
@@ -94,6 +96,9 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
         "network": get_network_io(),
         "network_status": get_network_status(),
         "status": get_status(cpu, memory, disk, warning_threshold, critical_threshold),
+        "health_score": get_health_score(
+            cpu, memory, disk, warning_threshold, critical_threshold
+        ),
     }
 
 
@@ -122,6 +127,7 @@ def main():
             "get_network_io",
             "get_network_status",
             "get_status",
+            "get_health_score",
             "get_exit_code",
             "get_selected_metric",
             "print_metric",
