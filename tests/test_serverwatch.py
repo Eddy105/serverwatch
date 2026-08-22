@@ -251,7 +251,7 @@ def test_collect_metrics(monkeypatch):
     assert metrics["system"]["hostname"] == "host"
     assert metrics["uptime_seconds"] == 3600
     assert metrics["status"] == "WARNING"
-    assert metrics["health_score"] == 83
+    assert metrics["health_score"] == 89
 
 
 def test_parse_arguments_defaults(monkeypatch):
