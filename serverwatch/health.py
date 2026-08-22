@@ -12,7 +12,9 @@ def get_status(cpu, memory, disk, warning_threshold=75.0, critical_threshold=90.
     return "HEALTHY"
 
 
-def get_health_score(cpu, memory, disk, warning_threshold=75.0, critical_threshold=90.0):
+def get_health_score(
+    cpu, memory, disk, warning_threshold=75.0, critical_threshold=90.0
+):
     """Return a transparent 0-100 score derived from CPU, memory, and disk."""
     if warning_threshold >= critical_threshold:
         raise ValueError("warning threshold must be lower than critical threshold")
