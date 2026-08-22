@@ -286,10 +286,7 @@ def print_selected_metric(
     elif name == "uptime_seconds":
         print(f"Uptime: {format_uptime(value)}")
     elif name == "load_average":
-        print(
-            f"Load average: {value['1m']:.2f} "
-            f"{value['5m']:.2f} {value['15m']:.2f}"
-        )
+        print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
     elif name == "network":
         suffix = f" ({network_interface})" if network_interface else ""
         print(f"Network RX{suffix}: {value['bytes_received']} bytes")
@@ -347,10 +344,7 @@ def print_human_readable(metrics):
     print_metric("Memory usage", metrics["memory"])
     print_metric("Swap usage  ", swap["percent"])
     print_metric(f"Disk usage ({metrics['disk_path']})", metrics["disk"])
-    print(
-        f"Load average: {load['1m']:.2f} "
-        f"{load['5m']:.2f} {load['15m']:.2f}"
-    )
+    print(f"Load average: {load['1m']:.2f} {load['5m']:.2f} {load['15m']:.2f}")
     print(f"Network RX:   {network['bytes_received']} bytes")
     print(f"Network TX:   {network['bytes_sent']} bytes")
     print()
