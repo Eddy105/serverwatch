@@ -1,3 +1,7 @@
+import argparse
+import json
+import sys
+
 from . import cli as _cli
 from . import collectors
 from .collectors import (
@@ -104,7 +108,57 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
     }
 
 
+def _health_breakdown_cli(argv):
+    parser = argparse.ArgumentParser(
+        prog="serverwatch --health-breakdown",
+        description="Show CPU, memory, and disk health-score components.",
+    )
+    parser.add_argument("--health-breakdown", action="store_true")
+    parser.add_argument("--json", action="store_true", help="Output JSON.")
+    parser.add_argument(
+        "--disk-path",
+        default="/",
+        metavar="PATH",
+        help="Filesystem path used for the disk component (default: /).",
+    )
+    parser.add_argument(
+        "--warning",
+        type=float,
+        default=75.0,
+        metavar="PERCENT",
+        help="Warning threshold in percent (default: 75).",
+    )
+    parser.add_argument(
+        "--critical",
+        type=float,
+        default=90.0,
+        metavar="PERCENT",
+        help="Critical threshold in percent (default: 90).",
+    )
+    args = parser.parse_args(argv)
+    validate_thresholds(args.warning, args.critical)
+
+    cpu = get_cpu_usage()
+    memory = get_memory_usage()
+    disk = get_disk_usage(args.disk_path)
+    breakdown = get_health_breakdown(
+        cpu, memory, disk, args.warning, args.critical
+    )
+
+    if args.json:
+        print(json.dumps(breakdown, indent=2))
+    else:
+        print(f"CPU health:    {breakdown['cpu']:.1f}/100")
+        print(f"Memory health: {breakdown['memory']:.1f}/100")
+        print(f"Disk health:   {breakdown['disk']:.1f}/100")
+
+    return EXIT_HEALTHY
+
+
 def main():
+    if "--health-breakdown" in sys.argv[1:]:
+        return _health_breakdown_cli(sys.argv[1:])
+
     # Keep the historical top-level API patchable for integrations and tests.
     original_parse_arguments = _cli.parse_arguments
     original_functions = {
