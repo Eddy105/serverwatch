@@ -24,6 +24,16 @@ def test_health_breakdown_exposes_each_component():
     assert breakdown == {"cpu": 50.0, "memory": 100.0, "disk": 100.0}
 
 
+def test_health_breakdown_supports_custom_thresholds():
+    breakdown = get_health_breakdown(75, 60, 90, 60, 90)
+    assert breakdown == {"cpu": 50.0, "memory": 100.0, "disk": 0.0}
+
+
+def test_health_breakdown_rejects_invalid_thresholds():
+    with pytest.raises(ValueError):
+        get_health_breakdown(20, 30, 40, 90, 90)
+
+
 def test_health_score_matches_breakdown_average():
     breakdown = get_health_breakdown(80, 70, 85)
     assert get_health_score(80, 70, 85) == round(sum(breakdown.values()) / 3)
