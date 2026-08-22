@@ -25,6 +25,7 @@ from .health import (
     EXIT_HEALTHY,
     EXIT_WARNING,
     get_exit_code,
+    get_health_breakdown,
     get_health_score,
     get_status,
 )
@@ -43,6 +44,7 @@ __all__ = (
     "get_disk_usage",
     "get_exit_code",
     "get_filesystems",
+    "get_health_breakdown",
     "get_health_score",
     "get_inode_usage",
     "get_load_average",
