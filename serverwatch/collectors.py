@@ -184,16 +184,25 @@ def get_network_io(interface=None):
     }
 
 
-def get_network_status():
-    """Return operational state and link information for network interfaces."""
+def get_network_status(interface=None):
+    """Return link information for all interfaces or one named interface."""
     stats = psutil.net_if_stats()
+    if interface is not None:
+        try:
+            info = stats[interface]
+        except KeyError as error:
+            raise NetworkInterfaceError(
+                f"network interface {interface!r} was not found"
+            ) from error
+        stats = {interface: info}
+
     return [
         {
-            "interface": interface,
+            "interface": name,
             "is_up": info.isup,
             "speed_mbps": info.speed,
             "duplex": str(info.duplex),
             "mtu": info.mtu,
         }
-        for interface, info in sorted(stats.items())
+        for name, info in sorted(stats.items())
     ]

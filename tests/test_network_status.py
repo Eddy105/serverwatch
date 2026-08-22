@@ -1,6 +1,8 @@
 import json
 import sys
 
+import pytest
+
 import serverwatch
 from serverwatch import cli
 
@@ -36,6 +38,39 @@ def test_network_status_collects_interface_state(monkeypatch):
             "mtu": 65536,
         },
     ]
+
+
+def test_network_status_filters_interface(monkeypatch):
+    stats = {
+        "eth0": type(
+            "Stats",
+            (),
+            {"isup": True, "speed": 1000, "duplex": 2, "mtu": 1500},
+        )(),
+        "lo": type(
+            "Stats",
+            (),
+            {"isup": True, "speed": 0, "duplex": 0, "mtu": 65536},
+        )(),
+    }
+    monkeypatch.setattr(serverwatch.psutil, "net_if_stats", lambda: stats)
+
+    assert serverwatch.get_network_status("eth0") == [
+        {
+            "interface": "eth0",
+            "is_up": True,
+            "speed_mbps": 1000,
+            "duplex": "2",
+            "mtu": 1500,
+        }
+    ]
+
+
+def test_network_status_rejects_unknown_interface(monkeypatch):
+    monkeypatch.setattr(serverwatch.psutil, "net_if_stats", lambda: {})
+
+    with pytest.raises(serverwatch.NetworkInterfaceError, match="eth9"):
+        serverwatch.get_network_status("eth9")
 
 
 def test_network_status_selector_json(monkeypatch, capsys):
