@@ -1,3 +1,6 @@
+import sys
+from importlib.metadata import PackageNotFoundError, version
+
 from . import cli as _cli
 from . import collectors
 from .collectors import (
@@ -30,6 +33,11 @@ from .health import (
     get_status,
 )
 
+try:
+    __version__ = version("serverwatch")
+except PackageNotFoundError:
+    __version__ = "0.2.0"
+
 __all__ = (
     "DiskIoUnavailableError",
     "NetworkInterfaceError",
@@ -37,6 +45,7 @@ __all__ = (
     "EXIT_CRITICAL",
     "EXIT_HEALTHY",
     "EXIT_WARNING",
+    "__version__",
     "collect_metrics",
     "format_uptime",
     "get_cpu_usage",
@@ -105,6 +114,10 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
 
 
 def main():
+    if "--version" in sys.argv[1:]:
+        print(f"serverwatch {__version__}")
+        return 0
+
     # Keep the historical top-level API patchable for integrations and tests.
     original_parse_arguments = _cli.parse_arguments
     original_functions = {
