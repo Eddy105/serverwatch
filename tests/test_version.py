@@ -27,9 +27,7 @@ def test_health_score_cli_supports_json(monkeypatch, capsys):
     monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 80.0)
     monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
     monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 80.0)
-    monkeypatch.setattr(
-        sys, "argv", ["serverwatch", "--health-score", "--json"]
-    )
+    monkeypatch.setattr(sys, "argv", ["serverwatch", "--health-score", "--json"])
 
     assert main() == 0
     assert capsys.readouterr().out == '{"health_score": 67}\n'
