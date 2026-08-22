@@ -74,10 +74,7 @@ def test_status_selector_supports_json_and_custom_settings(monkeypatch, capsys):
 
     assert serverwatch.main() == serverwatch.EXIT_CRITICAL
     assert calls == [(60.0, 85.0, "/var")]
-    assert json.loads(capsys.readouterr().out) == {
-        "status": "CRITICAL",
-        "health_score": 100,
-    }
+    assert json.loads(capsys.readouterr().out) == {"status": "CRITICAL"}
 
 
 def test_health_breakdown_selector_uses_current_metrics(monkeypatch, capsys):
