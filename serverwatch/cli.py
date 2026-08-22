@@ -106,7 +106,10 @@ def parse_arguments():
     parser.add_argument(
         "--network-interface",
         metavar="INTERFACE",
-        help="Network interface used with --network or --network-status (for example: eth0).",
+        help=(
+            "Network interface used with --network or --network-status "
+            "(for example: eth0)."
+        ),
     )
     parser.add_argument(
         "--warning",
