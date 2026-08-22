@@ -106,7 +106,7 @@ def parse_arguments():
     parser.add_argument(
         "--network-interface",
         metavar="INTERFACE",
-        help="Network interface used with --network (for example: eth0).",
+        help="Network interface used with --network or --network-status (for example: eth0).",
     )
     parser.add_argument(
         "--warning",
@@ -164,6 +164,10 @@ def get_selected_metric(args):
     if getattr(args, "network_interface", None):
         network_getter = partial(get_network_io, args.network_interface)
 
+    network_status_getter = get_network_status
+    if getattr(args, "network_interface", None):
+        network_status_getter = partial(get_network_status, args.network_interface)
+
     process_details = getattr(args, "sort", None) is not None
     process_getter = partial(
         get_processes,
@@ -204,7 +208,7 @@ def get_selected_metric(args):
         (
             "network_status",
             getattr(args, "network_status", False),
-            get_network_status,
+            network_status_getter,
         ),
     )
     for name, enabled, getter in selectors:
@@ -220,7 +224,7 @@ def print_selected_metric(
         payload = {name: value}
         if name in {"disk", "inodes"}:
             payload["disk_path"] = disk_path
-        if name == "network" and network_interface:
+        if name in {"network", "network_status"} and network_interface:
             payload["network_interface"] = network_interface
         print(json.dumps(payload, indent=2))
         return
@@ -376,8 +380,13 @@ def main():
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
 
-    if getattr(args, "network_interface", None) and not getattr(args, "network", False):
-        raise SystemExit("serverwatch: error: --network-interface requires --network")
+    if getattr(args, "network_interface", None) and not (
+        getattr(args, "network", False) or getattr(args, "network_status", False)
+    ):
+        raise SystemExit(
+            "serverwatch: error: --network-interface requires "
+            "--network or --network-status"
+        )
 
     try:
         if getattr(args, "watch", False):
