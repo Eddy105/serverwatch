@@ -33,6 +33,20 @@ def test_health_score_cli_supports_json(monkeypatch, capsys):
     assert capsys.readouterr().out == '{"health_score": 67}\n'
 
 
+def test_health_score_cli_json_preserves_fail_under_result(monkeypatch, capsys):
+    monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 80.0)
+    monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 80.0)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["serverwatch", "--health-score", "--json", "--fail-under", "70"],
+    )
+
+    assert main() == serverwatch.EXIT_CRITICAL
+    assert capsys.readouterr().out == '{"health_score": 67}\n'
+
+
 def test_health_score_cli_fail_under_returns_critical(monkeypatch, capsys):
     monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 80.0)
     monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
