@@ -141,9 +141,7 @@ def _health_breakdown_cli(argv):
     cpu = get_cpu_usage()
     memory = get_memory_usage()
     disk = get_disk_usage(args.disk_path)
-    breakdown = get_health_breakdown(
-        cpu, memory, disk, args.warning, args.critical
-    )
+    breakdown = get_health_breakdown(cpu, memory, disk, args.warning, args.critical)
 
     if args.json:
         print(json.dumps(breakdown, indent=2))
