@@ -95,9 +95,7 @@ def test_health_breakdown_selector_uses_current_metrics(monkeypatch, capsys):
 
     assert serverwatch.main() == serverwatch.EXIT_HEALTHY
     assert capsys.readouterr().out == (
-        "CPU health:    50.0/100\n"
-        "Memory health: 100.0/100\n"
-        "Disk health:   0.0/100\n"
+        "CPU health:    50.0/100\nMemory health: 100.0/100\nDisk health:   0.0/100\n"
     )
 
 
