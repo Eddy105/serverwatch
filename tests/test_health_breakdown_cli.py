@@ -33,9 +33,11 @@ def test_health_breakdown_cli_json(monkeypatch, capsys, health_breakdown_metrics
 
     assert serverwatch.main() == serverwatch.EXIT_HEALTHY
     assert json.loads(capsys.readouterr().out) == {
-        "cpu": 50.0,
-        "memory": 100.0,
-        "disk": 100.0,
+        "health_breakdown": {
+            "cpu": 50.0,
+            "memory": 100.0,
+            "disk": 100.0,
+        }
     }
 
 
@@ -94,5 +96,5 @@ def test_health_breakdown_cli_rejects_invalid_thresholds(monkeypatch):
         ],
     )
 
-    with pytest.raises(ValueError, match="warning threshold"):
+    with pytest.raises(SystemExit, match="warning threshold"):
         serverwatch.main()
