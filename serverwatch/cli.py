@@ -4,7 +4,13 @@ import time
 from functools import partial
 
 from . import collectors
-from .health import EXIT_HEALTHY, get_exit_code, get_health_score, get_status
+from .health import (
+    EXIT_HEALTHY,
+    get_exit_code,
+    get_health_breakdown,
+    get_health_score,
+    get_status,
+)
 
 DiskIoUnavailableError = collectors.DiskIoUnavailableError
 NetworkInterfaceError = collectors.NetworkInterfaceError
@@ -63,13 +69,14 @@ def parse_arguments():
         ("--filesystems", "Show mounted filesystem usage only."),
         ("--inodes", "Show inode usage for --disk-path only."),
         ("--disk-io", "Show aggregate disk I/O counters only."),
-        ("--temperatures", "Show hardware temperatures only."),
+        ("--temperatures", "Show hardware temperature sensors only."),
         ("--processes", "Show process count or process details."),
         ("--system", "Show host and system information only."),
         ("--uptime", "Show system uptime only."),
         ("--load", "Show load averages only."),
         ("--network", "Show network I/O counters only."),
         ("--network-status", "Show network interface link status only."),
+        ("--health-breakdown", "Show CPU, memory, and disk health components."),
         ("--status", "Show health status only."),
     )
     for option, help_text in metric_options:
@@ -171,6 +178,14 @@ def get_selected_metric(args):
     if getattr(args, "network_interface", None):
         network_status_getter = partial(get_network_status, args.network_interface)
 
+    health_breakdown_getter = lambda: get_health_breakdown(
+        get_cpu_usage(),
+        get_memory_usage(),
+        get_disk_usage(args.disk_path),
+        args.warning,
+        args.critical,
+    )
+
     process_details = getattr(args, "sort", None) is not None
     process_getter = partial(
         get_processes,
@@ -212,6 +227,11 @@ def get_selected_metric(args):
             "network_status",
             getattr(args, "network_status", False),
             network_status_getter,
+        ),
+        (
+            "health_breakdown",
+            getattr(args, "health_breakdown", False),
+            health_breakdown_getter,
         ),
     )
     for name, enabled, getter in selectors:
@@ -309,6 +329,10 @@ def print_selected_metric(
                 f"{interface['interface']}: {state} {speed_text}, "
                 f"MTU {interface['mtu']}"
             )
+    elif name == "health_breakdown":
+        print(f"CPU health:    {value['cpu']:.1f}/100")
+        print(f"Memory health: {value['memory']:.1f}/100")
+        print(f"Disk health:   {value['disk']:.1f}/100")
 
 
 def render_selected(args, selected_metric):
