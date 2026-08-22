@@ -17,6 +17,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 - Human-readable and JSON output
 - Individual metric selectors
 - Continuous watch mode with configurable refresh interval
+- Transparent 0-100 health score and component breakdown
 - Focused health-status output for scripts and monitoring checks
 - Configurable warning and critical thresholds
 - Monitoring-friendly exit codes
@@ -81,6 +82,7 @@ serverwatch --uptime
 serverwatch --load
 serverwatch --network
 serverwatch --network-status
+serverwatch --health-breakdown
 ```
 
 Inspect the most resource-intensive processes:
@@ -108,6 +110,16 @@ serverwatch --memory --watch --interval 2
 ```
 
 Watch mode refreshes the terminal in place and stops cleanly with `Ctrl+C`. It is intended for interactive terminal use and cannot be combined with `--json`.
+
+Show the transparent health-score components:
+
+```bash
+serverwatch --health-breakdown
+serverwatch --health-breakdown --json
+serverwatch --health-breakdown --warning 60 --critical 90 --disk-path /var
+```
+
+The breakdown reports independent 0-100 scores for CPU, memory, and disk using the same thresholds as the overall health score. The selector is available through both the installed `serverwatch` command and `python -m serverwatch`, so integrations can use either entry point consistently.
 
 Return only the current health state while preserving monitoring exit codes:
 
@@ -200,7 +212,8 @@ Inspect network interface link state:
 
 ```bash
 serverwatch --network-status
-serverwatch --network-status --json
+serverwatch --network-status --network-interface eth0
+serverwatch --network-status --network-interface eth0 --json
 ```
 
 This reports interface state, reported link speed, duplex mode, and MTU. It is informational and does not change the overall health status.
@@ -248,6 +261,7 @@ Load average: 0.42 0.38 0.31
 Network RX:   24813921 bytes
 Network TX:   10452890 bytes
 
+Health score: 92/100
 Status: HEALTHY
 ```
 
@@ -261,7 +275,7 @@ The full system check and `--status` return monitoring-friendly process exit cod
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, process details, filesystem overview, inode usage, disk I/O counters, temperature readings, and network status are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
+Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, process details, filesystem overview, inode usage, disk I/O counters, temperature readings, network status, and health breakdown are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 

@@ -9,14 +9,25 @@ def _args(**overrides):
         "memory": False,
         "swap": False,
         "disk": False,
+        "filesystems": False,
+        "inodes": False,
+        "disk_io": False,
+        "temperatures": False,
         "processes": False,
         "system": False,
         "uptime": False,
         "load": False,
         "network": False,
+        "network_status": False,
+        "health_breakdown": False,
         "status": True,
         "json": False,
+        "watch": False,
+        "interval": 5.0,
+        "sort": None,
+        "top": 10,
         "disk_path": "/",
+        "network_interface": None,
         "warning": 75.0,
         "critical": 90.0,
     }
@@ -63,7 +74,46 @@ def test_status_selector_supports_json_and_custom_settings(monkeypatch, capsys):
 
     assert serverwatch.main() == serverwatch.EXIT_CRITICAL
     assert calls == [(60.0, 85.0, "/var")]
+    assert json.loads(capsys.readouterr().out) == {"status": "CRITICAL"}
+
+
+def test_health_breakdown_selector_uses_current_metrics(monkeypatch, capsys):
+    monkeypatch.setattr(
+        serverwatch,
+        "parse_arguments",
+        lambda: _args(
+            health_breakdown=True,
+            status=False,
+            warning=60.0,
+            critical=90.0,
+            disk_path="/var",
+        ),
+    )
+    monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 75.0)
+    monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 30.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 90.0)
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
+    assert capsys.readouterr().out == (
+        "CPU health:    50.0/100\nMemory health: 100.0/100\nDisk health:   0.0/100\n"
+    )
+
+
+def test_health_breakdown_selector_supports_json(monkeypatch, capsys):
+    monkeypatch.setattr(
+        serverwatch,
+        "parse_arguments",
+        lambda: _args(health_breakdown=True, status=False, json=True),
+    )
+    monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 82.5)
+    monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 30.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 40.0)
+
+    assert serverwatch.main() == serverwatch.EXIT_HEALTHY
     assert json.loads(capsys.readouterr().out) == {
-        "status": "CRITICAL",
-        "health_score": 100,
+        "health_breakdown": {
+            "cpu": 50.0,
+            "memory": 100.0,
+            "disk": 100.0,
+        }
     }
