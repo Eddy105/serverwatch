@@ -1,3 +1,4 @@
+import argparse
 import sys
 from importlib.metadata import PackageNotFoundError, version
 
@@ -113,10 +114,55 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
     }
 
 
+def _health_score_cli(argv):
+    parser = argparse.ArgumentParser(
+        prog="serverwatch --health-score",
+        description="Show the current 0-100 health score.",
+    )
+    parser.add_argument("--health-score", action="store_true")
+    parser.add_argument("--json", action="store_true", help="Output JSON.")
+    parser.add_argument(
+        "--disk-path",
+        default="/",
+        metavar="PATH",
+        help="Filesystem path used for the disk component (default: /).",
+    )
+    parser.add_argument(
+        "--warning",
+        type=float,
+        default=75.0,
+        metavar="PERCENT",
+        help="Warning threshold in percent (default: 75).",
+    )
+    parser.add_argument(
+        "--critical",
+        type=float,
+        default=90.0,
+        metavar="PERCENT",
+        help="Critical threshold in percent (default: 90).",
+    )
+    args = parser.parse_args(argv)
+    validate_thresholds(args.warning, args.critical)
+    score = get_health_score(
+        get_cpu_usage(),
+        get_memory_usage(),
+        get_disk_usage(args.disk_path),
+        args.warning,
+        args.critical,
+    )
+    if args.json:
+        print(f'{{"health_score": {score}}}')
+    else:
+        print(f"Health score: {score}/100")
+    return EXIT_HEALTHY
+
+
 def main():
     if "--version" in sys.argv[1:]:
         print(f"serverwatch {__version__}")
         return 0
+    if "--health-score" in sys.argv[1:]:
+        return _health_score_cli(sys.argv[1:])
 
     # Keep the historical top-level API patchable for integrations and tests.
     original_parse_arguments = _cli.parse_arguments
