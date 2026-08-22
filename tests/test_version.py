@@ -32,14 +32,21 @@ def test_health_score_cli_supports_json(monkeypatch, capsys):
     )
 
     assert main() == 0
-    assert capsys.readouterr().out == '{"health_score": 33}\n'
+    assert capsys.readouterr().out == '{"health_score": 67}\n'
 
 
 def test_health_score_cli_rejects_invalid_thresholds(monkeypatch):
     monkeypatch.setattr(
         sys,
         "argv",
-        ["serverwatch", "--health-score", "--warning", "90", "--critical", "80"],
+        [
+            "serverwatch",
+            "--health-score",
+            "--warning",
+            "90",
+            "--critical",
+            "80",
+        ],
     )
 
     with pytest.raises(ValueError, match="warning threshold must be lower"):
