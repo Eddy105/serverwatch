@@ -178,13 +178,14 @@ def get_selected_metric(args):
     if getattr(args, "network_interface", None):
         network_status_getter = partial(get_network_status, args.network_interface)
 
-    health_breakdown_getter = lambda: get_health_breakdown(
-        get_cpu_usage(),
-        get_memory_usage(),
-        get_disk_usage(args.disk_path),
-        args.warning,
-        args.critical,
-    )
+    def health_breakdown_getter():
+        return get_health_breakdown(
+            get_cpu_usage(),
+            get_memory_usage(),
+            get_disk_usage(args.disk_path),
+            args.warning,
+            args.critical,
+        )
 
     process_details = getattr(args, "sort", None) is not None
     process_getter = partial(
@@ -422,15 +423,7 @@ def main():
         if getattr(args, "status", False):
             metrics = collect_metrics(args.warning, args.critical, args.disk_path)
             if args.json:
-                print(
-                    json.dumps(
-                        {
-                            "status": metrics["status"],
-                            "health_score": metrics["health_score"],
-                        },
-                        indent=2,
-                    )
-                )
+                print(json.dumps({"status": metrics["status"]}, indent=2))
             else:
                 print(metrics["status"])
             return get_exit_code(metrics["status"])
