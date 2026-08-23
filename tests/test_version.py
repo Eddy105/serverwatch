@@ -120,3 +120,14 @@ def test_health_score_cli_rejects_invalid_fail_under(monkeypatch):
 
     with pytest.raises(ValueError, match="fail-under must be between 0 and 100"):
         main()
+
+
+def test_health_score_cli_rejects_negative_fail_under(monkeypatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["serverwatch", "--health-score", "--fail-under", "-1"],
+    )
+
+    with pytest.raises(ValueError, match="fail-under must be between 0 and 100"):
+        main()
