@@ -20,6 +20,7 @@ get_cpu_usage = collectors.get_cpu_usage
 get_memory_usage = collectors.get_memory_usage
 get_swap_usage = collectors.get_swap_usage
 get_disk_usage = collectors.get_disk_usage
+get_disk_usage_details = collectors.get_disk_usage_details
 get_filesystems = collectors.get_filesystems
 get_inode_usage = collectors.get_inode_usage
 get_disk_io = collectors.get_disk_io
@@ -66,6 +67,7 @@ def parse_arguments():
         ("--memory", "Show memory usage only."),
         ("--swap", "Show swap usage only."),
         ("--disk", "Show disk usage only."),
+        ("--disk-details", "Show disk capacity and utilization details only."),
         ("--filesystems", "Show mounted filesystem usage only."),
         ("--inodes", "Show inode usage for --disk-path only."),
         ("--disk-io", "Show aggregate disk I/O counters only."),
@@ -202,6 +204,11 @@ def get_selected_metric(args):
             getattr(args, "disk", False),
             lambda: get_disk_usage(args.disk_path),
         ),
+        (
+            "disk_details",
+            getattr(args, "disk_details", False),
+            lambda: get_disk_usage_details(args.disk_path),
+        ),
         ("filesystems", getattr(args, "filesystems", False), get_filesystems),
         (
             "inodes",
@@ -246,7 +253,7 @@ def print_selected_metric(
 ):
     if json_output:
         payload = {name: value}
-        if name in {"disk", "inodes"}:
+        if name in {"disk", "disk_details", "inodes"}:
             payload["disk_path"] = disk_path
         if name in {"network", "network_status"} and network_interface:
             payload["network_interface"] = network_interface
@@ -263,6 +270,11 @@ def print_selected_metric(
         print(f"Swap total: {value['total']} bytes")
     elif name == "disk":
         print_metric(f"Disk usage ({disk_path})", value)
+    elif name == "disk_details":
+        print_metric(f"Disk usage ({disk_path})", value["percent"])
+        print(f"Disk used:  {value['used']} bytes")
+        print(f"Disk free:  {value['free']} bytes")
+        print(f"Disk total: {value['total']} bytes")
     elif name == "filesystems":
         for filesystem in value:
             device = filesystem["device"] or "-"
