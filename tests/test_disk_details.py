@@ -5,6 +5,39 @@ import serverwatch
 from serverwatch import get_disk_usage_details, parse_arguments
 
 
+def _args(**overrides):
+    defaults = {
+        "cpu": False,
+        "memory": False,
+        "swap": False,
+        "disk": False,
+        "disk_details": False,
+        "filesystems": False,
+        "inodes": False,
+        "disk_io": False,
+        "temperatures": False,
+        "processes": False,
+        "system": False,
+        "uptime": False,
+        "load": False,
+        "network": False,
+        "network_status": False,
+        "health_breakdown": False,
+        "status": False,
+        "json": False,
+        "watch": False,
+        "interval": 5.0,
+        "top": 10,
+        "sort": None,
+        "disk_path": "/",
+        "network_interface": None,
+        "warning": 75.0,
+        "critical": 90.0,
+    }
+    defaults.update(overrides)
+    return type("Args", (), defaults)()
+
+
 def test_disk_usage_details_uses_psutil(monkeypatch):
     seen_paths = []
 
@@ -31,16 +64,7 @@ def test_disk_details_selector_output(monkeypatch, capsys):
     monkeypatch.setattr(
         serverwatch,
         "parse_arguments",
-        lambda: type(
-            "Args",
-            (),
-            {
-                "disk_details": True,
-                "disk_path": "/srv",
-                "json": False,
-                "network_interface": None,
-            },
-        )(),
+        lambda: _args(disk_details=True, disk_path="/srv"),
     )
     monkeypatch.setattr(
         serverwatch,
@@ -60,16 +84,7 @@ def test_disk_details_selector_supports_json(monkeypatch, capsys):
     monkeypatch.setattr(
         serverwatch,
         "parse_arguments",
-        lambda: type(
-            "Args",
-            (),
-            {
-                "disk_details": True,
-                "disk_path": "/home",
-                "json": True,
-                "network_interface": None,
-            },
-        )(),
+        lambda: _args(disk_details=True, disk_path="/home", json=True),
     )
     monkeypatch.setattr(
         serverwatch,
