@@ -83,7 +83,27 @@ serverwatch --load
 serverwatch --network
 serverwatch --network-status
 serverwatch --health-breakdown
+serverwatch --health-score
 ```
+
+`--health-score` is useful for scripts that need the numeric health value without parsing the full system overview:
+
+```bash
+serverwatch --health-score
+serverwatch --health-score --json
+serverwatch --health-score --warning 60 --critical 90 --disk-path /var
+```
+
+The selector returns a deterministic 0-100 score using the same CPU, memory, disk, and threshold inputs as the overall health score. It is informational and returns exit code `0` when the score is collected successfully. It is available through both the installed command and `python -m serverwatch`.
+
+You can enforce a minimum score for scripts and monitoring checks with `--fail-under`:
+
+```bash
+serverwatch --health-score --fail-under 80
+serverwatch --health-score --json --fail-under 80
+```
+
+The numeric score is still printed. Exit code `2` is returned only when the score is below the requested threshold; the threshold must be an integer from `0` to `100`.
 
 Inspect the most resource-intensive processes:
 
@@ -275,7 +295,7 @@ The full system check and `--status` return monitoring-friendly process exit cod
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, process details, filesystem overview, inode usage, disk I/O counters, temperature readings, network status, and health breakdown are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
+Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, process details, filesystem overview, inode usage, disk I/O counters, temperature readings, network status, health score, and health breakdown are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
