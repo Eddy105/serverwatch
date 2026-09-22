@@ -40,6 +40,17 @@ def get_disk_usage(path="/"):
     return psutil.disk_usage(path).percent
 
 
+def get_disk_usage_details(path="/"):
+    """Return capacity and utilization details for a filesystem path."""
+    usage = psutil.disk_usage(path)
+    return {
+        "total": usage.total,
+        "used": usage.used,
+        "free": usage.free,
+        "percent": usage.percent,
+    }
+
+
 def get_filesystems():
     filesystems = []
     for partition in psutil.disk_partitions(all=False):
