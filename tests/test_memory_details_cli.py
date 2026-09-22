@@ -42,7 +42,7 @@ def test_memory_details_cli_supports_json(monkeypatch, capsys):
 
     assert main() == 0
     assert capsys.readouterr().out == (
-        '{\n'
+        "{\n"
         '  "memory_details": {\n'
         '    "total": 16000,\n'
         '    "used": 6000,\n'
