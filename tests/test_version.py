@@ -20,7 +20,7 @@ def test_health_score_cli_prints_score(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["serverwatch", "--health-score"])
 
     assert main() == 0
-    assert capsys.readouterr().out == "Health score: 100/100\n"
+    assert capsys.readouterr().out == "Health score: 89/100\n"
 
 
 def test_health_score_cli_supports_json(monkeypatch, capsys):
