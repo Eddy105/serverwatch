@@ -141,8 +141,17 @@ def _health_score_cli(argv):
         metavar="PERCENT",
         help="Critical threshold in percent (default: 90).",
     )
+    parser.add_argument(
+        "--fail-under",
+        type=int,
+        metavar="SCORE",
+        help="Return exit code 2 when the score is below SCORE.",
+    )
     args = parser.parse_args(argv)
     validate_thresholds(args.warning, args.critical)
+    if args.fail_under is not None and not 0 <= args.fail_under <= 100:
+        raise ValueError("fail-under must be between 0 and 100")
+
     score = get_health_score(
         get_cpu_usage(),
         get_memory_usage(),
@@ -154,6 +163,8 @@ def _health_score_cli(argv):
         print(f'{{"health_score": {score}}}')
     else:
         print(f"Health score: {score}/100")
+    if args.fail_under is not None and score < args.fail_under:
+        return EXIT_CRITICAL
     return EXIT_HEALTHY
 
 

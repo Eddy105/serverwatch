@@ -96,6 +96,15 @@ serverwatch --health-score --warning 60 --critical 90 --disk-path /var
 
 The selector returns a deterministic 0-100 score using the same CPU, memory, disk, and threshold inputs as the overall health score. It is informational and returns exit code `0` when the score is collected successfully. It is available through both the installed command and `python -m serverwatch`.
 
+You can enforce a minimum score for scripts and monitoring checks with `--fail-under`:
+
+```bash
+serverwatch --health-score --fail-under 80
+serverwatch --health-score --json --fail-under 80
+```
+
+The numeric score is still printed. Exit code `2` is returned only when the score is below the requested threshold; the threshold must be an integer from `0` to `100`.
+
 Inspect the most resource-intensive processes:
 
 ```bash
