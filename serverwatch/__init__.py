@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from importlib.metadata import PackageNotFoundError, version
 
@@ -116,6 +117,33 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
     }
 
 
+def _memory_details_cli(argv):
+    parser = argparse.ArgumentParser(
+        prog="serverwatch --memory-details",
+        description="Show detailed memory usage.",
+    )
+    parser.add_argument("--memory-details", action="store_true")
+    parser.add_argument("--json", action="store_true", help="Output JSON.")
+    args = parser.parse_args(argv)
+    memory = psutil.virtual_memory()
+    details = {
+        "total": memory.total,
+        "used": memory.used,
+        "available": memory.available,
+        "free": memory.free,
+        "percent": memory.percent,
+    }
+    if args.json:
+        print(json.dumps({"memory_details": details}, indent=2))
+    else:
+        print(f"Memory usage: {details['percent']:.1f} %")
+        print(f"Memory used:  {details['used']} bytes")
+        print(f"Memory available: {details['available']} bytes")
+        print(f"Memory free:  {details['free']} bytes")
+        print(f"Memory total: {details['total']} bytes")
+    return EXIT_HEALTHY
+
+
 def _health_score_cli(argv):
     parser = argparse.ArgumentParser(
         prog="serverwatch --health-score",
@@ -174,6 +202,8 @@ def main():
     if "--version" in sys.argv[1:]:
         print(f"serverwatch {__version__}")
         return 0
+    if "--memory-details" in sys.argv[1:]:
+        return _memory_details_cli(sys.argv[1:])
     if "--health-score" in sys.argv[1:]:
         return _health_score_cli(sys.argv[1:])
 
