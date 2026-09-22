@@ -72,6 +72,7 @@ serverwatch --cpu
 serverwatch --memory
 serverwatch --swap
 serverwatch --disk
+serverwatch --disk-details
 serverwatch --filesystems
 serverwatch --inodes
 serverwatch --disk-io
@@ -180,6 +181,16 @@ The selected disk path is also included in JSON output:
 ```bash
 serverwatch --disk --disk-path /home --json
 ```
+
+Inspect capacity and utilization details for a specific filesystem path:
+
+```bash
+serverwatch --disk-details
+serverwatch --disk-details --disk-path /var
+serverwatch --disk-details --disk-path /home --json
+```
+
+`--disk-details` reports used, free, total, and percentage utilization without changing the existing `--disk` behavior or health calculations. It is informational and returns exit code `0` when the path can be read.
 
 Inspect all mounted physical filesystems in one view:
 
@@ -295,7 +306,7 @@ The full system check and `--status` return monitoring-friendly process exit cod
 | 1 | WARNING |
 | 2 | CRITICAL |
 
-Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, process details, filesystem overview, inode usage, disk I/O counters, temperature readings, network status, health score, and health breakdown are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
+Single-metric selectors return `0` when the metric was collected successfully. Swap usage, process count, process details, filesystem overview, inode usage, disk I/O counters, disk details, temperature readings, network status, health score, and health breakdown are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
 
