@@ -50,7 +50,7 @@ def test_health_score_cli_json_preserves_fail_under_result(monkeypatch, capsys):
 def test_health_score_cli_fail_under_returns_critical(monkeypatch, capsys):
     monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 80.0)
     monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
-    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 80.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 40.0)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -64,7 +64,7 @@ def test_health_score_cli_fail_under_returns_critical(monkeypatch, capsys):
 def test_health_score_cli_fail_under_accepts_exact_score(monkeypatch, capsys):
     monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 80.0)
     monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
-    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 80.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 40.0)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -75,12 +75,10 @@ def test_health_score_cli_fail_under_accepts_exact_score(monkeypatch, capsys):
     assert capsys.readouterr().out == "Health score: 67/100\n"
 
 
-def test_health_score_cli_fail_under_accepts_zero_and_hundred(
-    monkeypatch, capsys
-):
+def test_health_score_cli_fail_under_accepts_zero_and_hundred(monkeypatch, capsys):
     monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 80.0)
     monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 80.0)
-    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 80.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 40.0)
 
     for threshold in ("0", "100"):
         monkeypatch.setattr(
