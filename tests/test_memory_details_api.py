@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from serverwatch.memory_details import get_memory_details
+from serverwatch import get_memory_details
 
 
 def test_get_memory_details_returns_capacity_and_usage(monkeypatch):
