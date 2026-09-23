@@ -36,6 +36,19 @@ def get_swap_usage():
     }
 
 
+def get_swap_usage_details():
+    """Return capacity and utilization details for swap space."""
+    swap = psutil.swap_memory()
+    return {
+        "total": swap.total,
+        "used": swap.used,
+        "free": swap.free,
+        "percent": swap.percent,
+        "sin": swap.sin,
+        "sout": swap.sout,
+    }
+
+
 def get_disk_usage(path="/"):
     return psutil.disk_usage(path).percent
 
