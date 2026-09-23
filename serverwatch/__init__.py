@@ -214,7 +214,7 @@ def _health_score_cli(argv):
         args.critical,
     )
     if args.json:
-        print(f'{"health_score": {score}}')
+        print(f'{{"health_score": {score}}}')
     else:
         print(f"Health score: {score}/100")
     if args.fail_under is not None and score < args.fail_under:
