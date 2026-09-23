@@ -9,6 +9,7 @@ from .collectors import (
     DiskIoUnavailableError,
     NetworkInterfaceError,
     TemperatureUnavailableError,
+    get_cpu_details,
     get_cpu_usage,
     get_disk_io,
     get_disk_usage,
@@ -52,6 +53,7 @@ __all__ = (
     "__version__",
     "collect_metrics",
     "format_uptime",
+    "get_cpu_details",
     "get_cpu_usage",
     "get_disk_io",
     "get_disk_usage",
@@ -117,6 +119,31 @@ def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="
             cpu, memory, disk, warning_threshold, critical_threshold
         ),
     }
+
+
+def _cpu_details_cli(argv):
+    parser = argparse.ArgumentParser(
+        prog="serverwatch --cpu-details",
+        description="Show detailed CPU utilization, topology, and frequency.",
+    )
+    parser.add_argument("--cpu-details", action="store_true")
+    parser.add_argument("--json", action="store_true", help="Output JSON.")
+    args = parser.parse_args(argv)
+    details = get_cpu_details()
+    if args.json:
+        print(json.dumps({"cpu_details": details}, indent=2))
+    else:
+        print(f"CPU usage:     {details['percent']:.1f} %")
+        print(f"Logical CPUs:  {details['logical_cpus']}")
+        print(f"Physical CPUs: {details['physical_cpus']}")
+        frequency = details["frequency_mhz"]
+        if frequency is None:
+            print("CPU frequency: unavailable")
+        else:
+            print(f"CPU current:   {frequency['current']:.1f} MHz")
+            print(f"CPU minimum:   {frequency['min']:.1f} MHz")
+            print(f"CPU maximum:   {frequency['max']:.1f} MHz")
+    return EXIT_HEALTHY
 
 
 def _memory_details_cli(argv):
@@ -204,6 +231,8 @@ def main():
     if "--version" in sys.argv[1:]:
         print(f"serverwatch {__version__}")
         return 0
+    if "--cpu-details" in sys.argv[1:]:
+        return _cpu_details_cli(sys.argv[1:])
     if "--memory-details" in sys.argv[1:]:
         return _memory_details_cli(sys.argv[1:])
     if "--health-score" in sys.argv[1:]:
