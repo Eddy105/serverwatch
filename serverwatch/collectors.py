@@ -22,6 +22,23 @@ def get_cpu_usage():
     return psutil.cpu_percent(interval=1)
 
 
+def get_cpu_details():
+    """Return CPU utilization, topology, and frequency details."""
+    frequency = psutil.cpu_freq()
+    return {
+        "percent": psutil.cpu_percent(interval=1),
+        "logical_cpus": psutil.cpu_count(logical=True),
+        "physical_cpus": psutil.cpu_count(logical=False),
+        "frequency_mhz": None
+        if frequency is None
+        else {
+            "current": frequency.current,
+            "min": frequency.min,
+            "max": frequency.max,
+        },
+    }
+
+
 def get_memory_usage():
     return psutil.virtual_memory().percent
 
