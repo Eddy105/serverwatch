@@ -39,11 +39,7 @@ def test_cpu_details_cli_supports_json(monkeypatch, capsys):
         lambda logical=True: 8 if logical else 4,
     )
     monkeypatch.setattr(serverwatch.psutil, "cpu_freq", lambda: frequency)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["serverwatch", "--cpu-details", "--json"],
-    )
+    monkeypatch.setattr(sys, "argv", ["serverwatch", "--cpu-details", "--json"])
 
     assert main() == 0
     assert capsys.readouterr().out == (
