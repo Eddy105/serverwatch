@@ -9,4 +9,12 @@ serverwatch --memory-details --json
 
 Human-readable output includes total, used, available, free, and percentage utilization. JSON output exposes the same values under `memory_details`.
 
+The same data is available to Python integrations through the top-level public API:
+
+```python
+from serverwatch import get_memory_details
+
+memory = get_memory_details()
+```
+
 The selector is informational and returns exit code `0` when memory information is collected successfully. It does not change the existing `--memory` metric or the health score calculation.

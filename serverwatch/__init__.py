@@ -37,6 +37,7 @@ from .health import (
     get_health_score,
     get_status,
 )
+from .memory_details import get_memory_details
 
 try:
     __version__ = version("serverwatch")
@@ -64,6 +65,7 @@ __all__ = (
     "get_health_score",
     "get_inode_usage",
     "get_load_average",
+    "get_memory_details",
     "get_memory_usage",
     "get_network_io",
     "get_network_status",
@@ -154,14 +156,7 @@ def _memory_details_cli(argv):
     parser.add_argument("--memory-details", action="store_true")
     parser.add_argument("--json", action="store_true", help="Output JSON.")
     args = parser.parse_args(argv)
-    memory = psutil.virtual_memory()
-    details = {
-        "total": memory.total,
-        "used": memory.used,
-        "available": memory.available,
-        "free": memory.free,
-        "percent": memory.percent,
-    }
+    details = get_memory_details()
     if args.json:
         print(json.dumps({"memory_details": details}, indent=2))
     else:
