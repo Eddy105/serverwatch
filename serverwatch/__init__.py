@@ -22,6 +22,7 @@ from .collectors import (
     get_process_count,
     get_processes,
     get_swap_usage,
+    get_swap_usage_details,
     get_system_info,
     get_temperatures,
     get_uptime_seconds,
@@ -69,6 +70,7 @@ __all__ = (
     "get_selected_metric",
     "get_status",
     "get_swap_usage",
+    "get_swap_usage_details",
     "get_system_info",
     "get_temperatures",
     "get_uptime_seconds",
@@ -190,7 +192,7 @@ def _health_score_cli(argv):
         args.critical,
     )
     if args.json:
-        print(f'{{"health_score": {score}}}')
+        print(f'{"health_score": {score}}')
     else:
         print(f"Health score: {score}/100")
     if args.fail_under is not None and score < args.fail_under:
@@ -218,6 +220,7 @@ def main():
             "get_cpu_usage",
             "get_memory_usage",
             "get_swap_usage",
+            "get_swap_usage_details",
             "get_disk_usage",
             "get_disk_usage_details",
             "get_filesystems",
