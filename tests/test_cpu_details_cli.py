@@ -7,9 +7,7 @@ from serverwatch import main
 
 def test_cpu_details_cli_prints_cpu_values(monkeypatch, capsys):
     frequency = SimpleNamespace(current=3200.0, min=800.0, max=4200.0)
-    monkeypatch.setattr(
-        serverwatch.psutil, "cpu_percent", lambda interval=1: 37.5
-    )
+    monkeypatch.setattr(serverwatch.psutil, "cpu_percent", lambda interval=1: 37.5)
     monkeypatch.setattr(
         serverwatch.psutil,
         "cpu_count",
@@ -30,9 +28,7 @@ def test_cpu_details_cli_prints_cpu_values(monkeypatch, capsys):
 
 def test_cpu_details_cli_supports_json(monkeypatch, capsys):
     frequency = SimpleNamespace(current=3200.0, min=800.0, max=4200.0)
-    monkeypatch.setattr(
-        serverwatch.psutil, "cpu_percent", lambda interval=1: 37.5
-    )
+    monkeypatch.setattr(serverwatch.psutil, "cpu_percent", lambda interval=1: 37.5)
     monkeypatch.setattr(
         serverwatch.psutil,
         "cpu_count",
@@ -59,9 +55,7 @@ def test_cpu_details_cli_supports_json(monkeypatch, capsys):
 
 
 def test_cpu_details_cli_handles_unavailable_frequency(monkeypatch, capsys):
-    monkeypatch.setattr(
-        serverwatch.psutil, "cpu_percent", lambda interval=1: 12.0
-    )
+    monkeypatch.setattr(serverwatch.psutil, "cpu_percent", lambda interval=1: 12.0)
     monkeypatch.setattr(
         serverwatch.psutil,
         "cpu_count",
