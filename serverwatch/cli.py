@@ -346,7 +346,10 @@ def print_selected_metric(
     elif name == "load_details":
         print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
         print(f"CPU count:    {value['cpu_count']}")
-        print(f"Per-CPU load: {value['per_cpu_1m']:.2f} {value['per_cpu_5m']:.2f} {value['per_cpu_15m']:.2f}")
+        print(
+            f"Per-CPU load: {value['per_cpu_1m']:.2f} "
+            f"{value['per_cpu_5m']:.2f} {value['per_cpu_15m']:.2f}"
+        )
     elif name == "network":
         suffix = f" ({network_interface})" if network_interface else ""
         print(f"Network RX{suffix}: {value['bytes_received']} bytes")
