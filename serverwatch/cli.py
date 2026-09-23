@@ -19,6 +19,7 @@ TemperatureUnavailableError = collectors.TemperatureUnavailableError
 get_cpu_usage = collectors.get_cpu_usage
 get_memory_usage = collectors.get_memory_usage
 get_swap_usage = collectors.get_swap_usage
+get_swap_usage_details = collectors.get_swap_usage_details
 get_disk_usage = collectors.get_disk_usage
 get_disk_usage_details = collectors.get_disk_usage_details
 get_filesystems = collectors.get_filesystems
@@ -66,6 +67,7 @@ def parse_arguments():
         ("--cpu", "Show CPU usage only."),
         ("--memory", "Show memory usage only."),
         ("--swap", "Show swap usage only."),
+        ("--swap-details", "Show detailed swap usage only."),
         ("--disk", "Show disk usage only."),
         ("--disk-details", "Show disk capacity and utilization details only."),
         ("--filesystems", "Show mounted filesystem usage only."),
@@ -200,6 +202,11 @@ def get_selected_metric(args):
         ("memory", getattr(args, "memory", False), get_memory_usage),
         ("swap", getattr(args, "swap", False), get_swap_usage),
         (
+            "swap_details",
+            getattr(args, "swap_details", False),
+            get_swap_usage_details,
+        ),
+        (
             "disk",
             getattr(args, "disk", False),
             lambda: get_disk_usage(args.disk_path),
@@ -268,6 +275,13 @@ def print_selected_metric(
         print_metric("Swap usage", value["percent"])
         print(f"Swap used: {value['used']} bytes")
         print(f"Swap total: {value['total']} bytes")
+    elif name == "swap_details":
+        print_metric("Swap usage", value["percent"])
+        print(f"Swap used:  {value['used']} bytes")
+        print(f"Swap free:  {value['free']} bytes")
+        print(f"Swap total: {value['total']} bytes")
+        print(f"Swap in:    {value['sin']} bytes")
+        print(f"Swap out:   {value['sout']} bytes")
     elif name == "disk":
         print_metric(f"Disk usage ({disk_path})", value)
     elif name == "disk_details":
