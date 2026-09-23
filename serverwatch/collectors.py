@@ -203,7 +203,16 @@ def get_uptime_seconds():
 
 def get_load_average():
     one, five, fifteen = os.getloadavg()
-    return {"1m": one, "5m": five, "15m": fifteen}
+    cpu_count = psutil.cpu_count() or 1
+    return {
+        "1m": one,
+        "5m": five,
+        "15m": fifteen,
+        "cpu_count": cpu_count,
+        "per_cpu_1m": one / cpu_count,
+        "per_cpu_5m": five / cpu_count,
+        "per_cpu_15m": fifteen / cpu_count,
+    }
 
 
 def get_network_io(interface=None):

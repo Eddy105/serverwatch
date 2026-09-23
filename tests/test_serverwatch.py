@@ -208,7 +208,15 @@ def test_extended_metric_helpers(monkeypatch):
     assert get_system_info()["hostname"] == "test-host"
     assert get_system_info()["cpu_count"] == 8
     assert get_uptime_seconds() == 900
-    assert get_load_average() == {"1m": 1.0, "5m": 0.5, "15m": 0.25}
+    assert get_load_average() == {
+        "1m": 1.0,
+        "5m": 0.5,
+        "15m": 0.25,
+        "cpu_count": 8,
+        "per_cpu_1m": 0.125,
+        "per_cpu_5m": 0.0625,
+        "per_cpu_15m": 0.03125,
+    }
     assert get_network_io()["bytes_received"] == 200
     assert format_uptime(90061) == "1d 1h 1m"
 
