@@ -78,6 +78,7 @@ def parse_arguments():
         ("--system", "Show host and system information only."),
         ("--uptime", "Show system uptime only."),
         ("--load", "Show load averages only."),
+        ("--load-details", "Show load averages with per-CPU normalization."),
         ("--network", "Show network I/O counters only."),
         ("--network-status", "Show network interface link status only."),
         ("--health-breakdown", "Show CPU, memory, and disk health components."),
@@ -237,6 +238,7 @@ def get_selected_metric(args):
         ("system", getattr(args, "system", False), get_system_info),
         ("uptime_seconds", getattr(args, "uptime", False), get_uptime_seconds),
         ("load_average", getattr(args, "load", False), get_load_average),
+        ("load_details", getattr(args, "load_details", False), get_load_average),
         ("network", getattr(args, "network", False), network_getter),
         (
             "network_status",
@@ -341,6 +343,10 @@ def print_selected_metric(
         print(f"Uptime: {format_uptime(value)}")
     elif name == "load_average":
         print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
+    elif name == "load_details":
+        print(f"Load average: {value['1m']:.2f} {value['5m']:.2f} {value['15m']:.2f}")
+        print(f"CPU count:    {value['cpu_count']}")
+        print(f"Per-CPU load: {value['per_cpu_1m']:.2f} {value['per_cpu_5m']:.2f} {value['per_cpu_15m']:.2f}")
     elif name == "network":
         suffix = f" ({network_interface})" if network_interface else ""
         print(f"Network RX{suffix}: {value['bytes_received']} bytes")
