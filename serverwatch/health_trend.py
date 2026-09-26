@@ -8,4 +8,9 @@ def get_health_trend(current_score, previous_score):
         direction = "degrading"
     else:
         direction = "stable"
-    return {"current": current_score, "previous": previous_score, "delta": delta, "direction": direction}
+    return {
+        "current": current_score,
+        "previous": previous_score,
+        "delta": delta,
+        "direction": direction,
+    }
