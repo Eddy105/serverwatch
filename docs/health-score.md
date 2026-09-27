@@ -13,3 +13,6 @@ The three metric scores are averaged and rounded to the nearest integer.
 For example, with the default thresholds of 75% warning and 90% critical, CPU at 82.5%, memory at 30%, and disk at 40% produces a score of `83/100`.
 
 The health score is informational. Existing `HEALTHY`, `WARNING`, and `CRITICAL` status values and exit codes remain authoritative for automation.
+
+
+The CLI selector is available as `serverwatch --health-score` and supports `--json`.
