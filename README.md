@@ -19,6 +19,7 @@ ServerWatch is a lightweight open-source command-line tool for monitoring Linux 
 - Individual metric selectors
 - Continuous watch mode with configurable refresh interval
 - Transparent 0-100 health score and component breakdown
+- Scriptable health-score threshold checks with `--fail-under`
 - Focused health-status output for scripts and monitoring checks
 - Configurable warning and critical thresholds
 - Monitoring-friendly exit codes
@@ -114,7 +115,7 @@ serverwatch --health-score --fail-under 80
 serverwatch --health-score --json --fail-under 80
 ```
 
-The numeric score is still printed. Exit code `2` is returned only when the score is below the requested threshold; the threshold must be an integer from `0` to `100`.
+The numeric score is still printed. Exit code `2` is returned only when the score is below the requested threshold; the threshold must be an integer from `0` to `100`. `--fail-under` requires `--health-score`.
 
 Inspect the most resource-intensive processes:
 
