@@ -82,11 +82,18 @@ def parse_arguments():
         ("--network", "Show network I/O counters only."),
         ("--network-status", "Show network interface link status only."),
         ("--health-breakdown", "Show CPU, memory, and disk health components."),
+        ("--health-score", "Show the numeric health score only."),
         ("--status", "Show health status only."),
     )
     for option, help_text in metric_options:
         metric_group.add_argument(option, action="store_true", help=help_text)
     parser.add_argument("--json", action="store_true", help="Output metrics as JSON.")
+    parser.add_argument(
+        "--fail-under",
+        type=int,
+        metavar="SCORE",
+        help="Exit with code 2 when --health-score is below SCORE (0-100).",
+    )
     parser.add_argument(
         "--watch", action="store_true", help="Continuously refresh the selected view."
     )
@@ -154,6 +161,14 @@ def validate_interval(interval):
         raise ValueError("interval must be greater than 0")
 
 
+def validate_health_score_options(args):
+    fail_under = getattr(args, "fail_under", None)
+    if fail_under is not None and not 0 <= fail_under <= 100:
+        raise ValueError("fail-under must be between 0 and 100")
+    if fail_under is not None and not getattr(args, "health_score", False):
+        raise ValueError("--fail-under requires --health-score")
+
+
 def validate_process_options(args):
     if getattr(args, "top", 10) <= 0:
         raise ValueError("process limit must be greater than 0")
@@ -185,6 +200,15 @@ def get_selected_metric(args):
 
     def health_breakdown_getter():
         return get_health_breakdown(
+            get_cpu_usage(),
+            get_memory_usage(),
+            get_disk_usage(args.disk_path),
+            args.warning,
+            args.critical,
+        )
+
+    def health_score_getter():
+        return get_health_score(
             get_cpu_usage(),
             get_memory_usage(),
             get_disk_usage(args.disk_path),
@@ -250,6 +274,7 @@ def get_selected_metric(args):
             getattr(args, "health_breakdown", False),
             health_breakdown_getter,
         ),
+        ("health_score", getattr(args, "health_score", False), health_score_getter),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -369,6 +394,8 @@ def print_selected_metric(
         print(f"CPU health:    {value['cpu']:.1f}/100")
         print(f"Memory health: {value['memory']:.1f}/100")
         print(f"Disk health:   {value['disk']:.1f}/100")
+    elif name == "health_score":
+        print(f"Health score: {value}/100")
 
 
 def render_selected(args, selected_metric):
@@ -439,6 +466,7 @@ def main():
     try:
         validate_thresholds(args.warning, args.critical)
         validate_interval(getattr(args, "interval", 5.0))
+        validate_health_score_options(args)
         validate_process_options(args)
     except ValueError as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
@@ -466,6 +494,10 @@ def main():
         selected_metric = get_selected_metric(args)
         if selected_metric is not None:
             render_selected(args, selected_metric)
+            if selected_metric[0] == "health_score":
+                fail_under = getattr(args, "fail_under", None)
+                if fail_under is not None and selected_metric[1] < fail_under:
+                    return EXIT_CRITICAL
             return EXIT_HEALTHY
 
         metrics = collect_metrics(args.warning, args.critical, args.disk_path)
