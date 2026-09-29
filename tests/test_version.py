@@ -129,3 +129,28 @@ def test_health_score_cli_rejects_negative_fail_under(monkeypatch):
 
     with pytest.raises(ValueError, match="fail-under must be between 0 and 100"):
         main()
+
+
+def test_diagnose_cli_reports_warning_findings(monkeypatch, capsys):
+    monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 80.0)
+    monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 30.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 40.0)
+    monkeypatch.setattr(sys, "argv", ["serverwatch", "--diagnose"])
+
+    assert main() == 0
+    output = capsys.readouterr().out
+    assert "[WARNING] CPU_HIGH" in output
+    assert "Inspect top CPU-consuming processes." in output
+
+
+def test_diagnose_cli_supports_json(monkeypatch, capsys):
+    monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 95.0)
+    monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 40.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 91.0)
+    monkeypatch.setattr(sys, "argv", ["serverwatch", "--diagnose", "--json"])
+
+    assert main() == 0
+    output = capsys.readouterr().out
+    assert '"code": "CPU_HIGH"' in output
+    assert '"severity": "CRITICAL"' in output
+    assert '"code": "DISK_HIGH"' in output

@@ -88,6 +88,7 @@ serverwatch --network
 serverwatch --network-status
 serverwatch --health-breakdown
 serverwatch --health-score
+serverwatch --diagnose
 ```
 
 `--memory-details` reports total, used, available, free, and percentage memory utilization. `--swap-details` reports total, used, free, percentage utilization, and swap paging activity (`sin`/`sout`). Both selectors support `--json` and return exit code `0` when the data is collected successfully.
@@ -115,6 +116,16 @@ serverwatch --health-score --json --fail-under 80
 ```
 
 The numeric score is still printed. Exit code `2` is returned only when the score is below the requested threshold; the threshold must be an integer from `0` to `100`.
+
+Use deterministic diagnosis findings:
+
+```bash
+serverwatch --diagnose
+serverwatch --diagnose --json
+serverwatch --diagnose --disk-path /var --warning 70 --critical 90
+```
+
+The diagnosis selector is read-only. It correlates the current CPU, memory, and disk utilization against the configured thresholds and emits explicit evidence and recommendations. It does not execute remediation actions.
 
 Inspect the most resource-intensive processes:
 
@@ -306,6 +317,8 @@ The full system check and `--status` return monitoring-friendly process exit cod
 | 1 | WARNING |
 | 2 | CRITICAL |
 
+The `--diagnose` selector returns `0` after collecting findings successfully and never changes system state.
+
 Single-metric selectors return `0` when the metric was collected successfully. Swap usage, swap details, process count, process details, filesystem overview, inode usage, disk I/O counters, temperature readings, network status, health score, and health breakdown are currently informational and do not change the full health status. An unreadable disk path, unavailable disk I/O counters or temperature sensors, or unknown requested network interface exits with an error instead of silently checking a different resource.
 
 This makes ServerWatch useful in shell scripts and monitoring automation:
@@ -331,7 +344,7 @@ Pushing a semantic version tag such as `v0.3.0` triggers the release workflow. I
 
 ## Roadmap
 
-Planned next steps include configuration files, structured logging, richer filesystem reporting, and remote monitoring capabilities.
+Planned next steps include service health checks, bounded log/journal inspection, evidence correlation, optional local LLM explanations, safe dry-run remediation, verification, audit trails, configuration files, and remote monitoring capabilities.
 
 ## License
 
