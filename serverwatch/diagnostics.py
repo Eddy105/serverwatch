@@ -41,6 +41,25 @@ def diagnose_metrics(metrics, warning_threshold=75.0, critical_threshold=90.0):
         findings.append(DiagnosticFinding(code, severity, message, recommendation, evidence))
     return findings
 
+def diagnose_load_average(load_average):
+    """Return a deterministic finding for normalized one-minute load."""
+    if not load_average or not load_average.get("cpu_count"):
+        return None
+    normalized = float(load_average["1m"]) / float(load_average["cpu_count"])
+    if normalized >= 1.5:
+        severity = SEVERITY_CRITICAL
+    elif normalized >= 1.0:
+        severity = SEVERITY_WARNING
+    else:
+        return None
+    return DiagnosticFinding(
+        "LOAD_AVERAGE_HIGH",
+        severity,
+        "1-minute load is high relative to CPU capacity.",
+        "Inspect CPU-bound processes, I/O wait, and recent workload changes.",
+        {"load_1m": float(load_average["1m"]), "cpu_count": int(load_average["cpu_count"]), "per_cpu_load_1m": normalized},
+    )
+
 def findings_to_dict(findings):
     return [finding.to_dict() for finding in findings]
 
