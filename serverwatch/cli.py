@@ -4,6 +4,7 @@ import time
 from functools import partial
 
 from . import collectors
+from .diagnostics import diagnose_metrics, findings_to_dict
 from .health import (
     EXIT_HEALTHY,
     get_exit_code,
@@ -82,6 +83,7 @@ def parse_arguments():
         ("--network", "Show network I/O counters only."),
         ("--network-status", "Show network interface link status only."),
         ("--health-breakdown", "Show CPU, memory, and disk health components."),
+        ("--diagnose", "Show deterministic diagnostic findings."),
         ("--status", "Show health status only."),
     )
     for option, help_text in metric_options:
@@ -183,6 +185,10 @@ def get_selected_metric(args):
     if getattr(args, "network_interface", None):
         network_status_getter = partial(get_network_status, args.network_interface)
 
+    def diagnose_getter():
+        metrics = collect_metrics(args.warning, args.critical, args.disk_path)
+        return findings_to_dict(diagnose_metrics(metrics, args.warning, args.critical))
+
     def health_breakdown_getter():
         return get_health_breakdown(
             get_cpu_usage(),
@@ -250,6 +256,7 @@ def get_selected_metric(args):
             getattr(args, "health_breakdown", False),
             health_breakdown_getter,
         ),
+        ("diagnose", getattr(args, "diagnose", False), diagnose_getter),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -369,6 +376,18 @@ def print_selected_metric(
         print(f"CPU health:    {value['cpu']:.1f}/100")
         print(f"Memory health: {value['memory']:.1f}/100")
         print(f"Disk health:   {value['disk']:.1f}/100")
+    elif name == "diagnose":
+        if not value:
+            print("No diagnostic findings.")
+            return
+        for finding in value:
+            print(f"{finding['severity'].upper()}  {finding['code']}")
+            print(finding["message"])
+            print("Evidence:")
+            for key, evidence in finding["evidence"].items():
+                print(f"  {key}: {evidence}")
+            print(f"Recommendation: {finding['recommendation']}")
+            print()
 
 
 def render_selected(args, selected_metric):
