@@ -162,7 +162,7 @@ def test_diagnose_returns_empty_for_healthy_metrics():
 
 
 def test_diagnose_reports_multiple_findings_with_evidence():
-    findings = diagnose(95.0, 80.0, 91.0, disk_path="/var")
+    findings = diagnose(95.0, 95.0, 91.0, disk_path="/var")
 
     assert [finding.code for finding in findings] == [
         "CPU_HIGH",
