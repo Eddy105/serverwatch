@@ -273,6 +273,8 @@ def print_selected_metric(
     name, value, json_output=False, disk_path="/", network_interface=None
 ):
     if json_output:
+        if name == "diagnose":
+            value = [finding.to_dict() for finding in value]
         payload = {name: value}
         if name in {"disk", "disk_details", "inodes"}:
             payload["disk_path"] = disk_path
