@@ -43,3 +43,5 @@ def diagnose_metrics(metrics, warning_threshold=75.0, critical_threshold=90.0):
 
 def findings_to_dict(findings):
     return [finding.to_dict() for finding in findings]
+
+# Diagnosis remains deterministic and read-only.
