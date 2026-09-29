@@ -262,6 +262,7 @@ def get_selected_metric(args):
             getattr(args, "health_breakdown", False),
             health_breakdown_getter,
         ),
+        ("diagnose", getattr(args, "diagnose", False), diagnosis_getter),
     )
     for name, enabled, getter in selectors:
         if enabled:
