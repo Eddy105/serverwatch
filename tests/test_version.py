@@ -4,6 +4,7 @@ import pytest
 
 import serverwatch
 from serverwatch import __version__, main
+from serverwatch.diagnostics import diagnose
 
 
 def test_version_is_exposed(capsys, monkeypatch):
@@ -129,3 +130,57 @@ def test_health_score_cli_rejects_negative_fail_under(monkeypatch):
 
     with pytest.raises(ValueError, match="fail-under must be between 0 and 100"):
         main()
+
+
+def test_diagnose_cli_reports_warning_findings(monkeypatch, capsys):
+    monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 80.0)
+    monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 30.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 40.0)
+    monkeypatch.setattr(sys, "argv", ["serverwatch", "--diagnose"])
+
+    assert main() == 0
+    output = capsys.readouterr().out
+    assert "[WARNING] CPU_HIGH" in output
+    assert "Inspect top CPU-consuming processes." in output
+
+
+def test_diagnose_cli_supports_json(monkeypatch, capsys):
+    monkeypatch.setattr(serverwatch, "get_cpu_usage", lambda: 95.0)
+    monkeypatch.setattr(serverwatch, "get_memory_usage", lambda: 40.0)
+    monkeypatch.setattr(serverwatch, "get_disk_usage", lambda path: 91.0)
+    monkeypatch.setattr(sys, "argv", ["serverwatch", "--diagnose", "--json"])
+
+    assert main() == 0
+    output = capsys.readouterr().out
+    assert '"code": "CPU_HIGH"' in output
+    assert '"severity": "CRITICAL"' in output
+    assert '"code": "DISK_HIGH"' in output
+
+
+def test_diagnose_returns_empty_for_healthy_metrics():
+    assert diagnose(10.0, 20.0, 30.0) == []
+
+
+def test_diagnose_reports_multiple_findings_with_evidence():
+    findings = diagnose(95.0, 95.0, 91.0, disk_path="/var")
+
+    assert [finding.code for finding in findings] == [
+        "CPU_HIGH",
+        "MEMORY_HIGH",
+        "DISK_HIGH",
+    ]
+    assert all(finding.severity == "CRITICAL" for finding in findings)
+    assert findings[-1].resource == "/var"
+    assert findings[-1].to_dict()["evidence"]["usage_percent"] == 91.0
+
+
+def test_diagnose_rejects_invalid_threshold_order():
+    with pytest.raises(ValueError, match="warning threshold must be lower"):
+        diagnose(1.0, 1.0, 1.0, warning_threshold=90, critical_threshold=80)
+
+
+def test_diagnose_rejects_thresholds_outside_percent_range():
+    with pytest.raises(ValueError, match="warning threshold must be between"):
+        diagnose(1.0, 1.0, 1.0, warning_threshold=-1)
+    with pytest.raises(ValueError, match="critical threshold must be between"):
+        diagnose(1.0, 1.0, 1.0, critical_threshold=101)

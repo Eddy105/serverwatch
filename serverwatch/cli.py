@@ -4,6 +4,7 @@ import time
 from functools import partial
 
 from . import collectors
+from .diagnostics import diagnose
 from .health import (
     EXIT_HEALTHY,
     get_exit_code,
@@ -82,6 +83,7 @@ def parse_arguments():
         ("--network", "Show network I/O counters only."),
         ("--network-status", "Show network interface link status only."),
         ("--health-breakdown", "Show CPU, memory, and disk health components."),
+        ("--diagnose", "Show deterministic diagnostic findings."),
         ("--status", "Show health status only."),
     )
     for option, help_text in metric_options:
@@ -192,6 +194,16 @@ def get_selected_metric(args):
             args.critical,
         )
 
+    def diagnosis_getter():
+        return diagnose(
+            get_cpu_usage(),
+            get_memory_usage(),
+            get_disk_usage(args.disk_path),
+            args.warning,
+            args.critical,
+            args.disk_path,
+        )
+
     process_details = getattr(args, "sort", None) is not None
     process_getter = partial(
         get_processes,
@@ -250,6 +262,7 @@ def get_selected_metric(args):
             getattr(args, "health_breakdown", False),
             health_breakdown_getter,
         ),
+        ("diagnose", getattr(args, "diagnose", False), diagnosis_getter),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -261,6 +274,8 @@ def print_selected_metric(
     name, value, json_output=False, disk_path="/", network_interface=None
 ):
     if json_output:
+        if name == "diagnose":
+            value = [finding.to_dict() for finding in value]
         payload = {name: value}
         if name in {"disk", "disk_details", "inodes"}:
             payload["disk_path"] = disk_path
@@ -365,6 +380,16 @@ def print_selected_metric(
                 f"{interface['interface']}: {state} {speed_text}, "
                 f"MTU {interface['mtu']}"
             )
+    elif name == "diagnose":
+        if not value:
+            print("No diagnostic findings.")
+            return
+        for finding in value:
+            print(f"[{finding.severity}] {finding.code}")
+            print(f"Resource:       {finding.resource}")
+            print(f"Message:        {finding.message}")
+            print(f"Recommendation: {finding.recommendation}")
+            print()
     elif name == "health_breakdown":
         print(f"CPU health:    {value['cpu']:.1f}/100")
         print(f"Memory health: {value['memory']:.1f}/100")
