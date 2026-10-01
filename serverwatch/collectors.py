@@ -256,3 +256,60 @@ def get_network_status(interface=None):
         }
         for name, info in sorted(stats.items())
     ]
+
+
+class ServiceObservationError(ValueError):
+    """Raised when systemd service state cannot be observed."""
+
+
+def get_systemd_services(timeout=5.0):
+    """Return read-only systemd service state using a fixed command."""
+    if timeout <= 0:
+        raise ValueError("service observation timeout must be greater than 0")
+
+    import subprocess
+
+    command = [
+        "systemctl",
+        "list-units",
+        "--type=service",
+        "--all",
+        "--no-legend",
+        "--no-pager",
+        "--plain",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            shell=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as error:
+        raise ServiceObservationError(
+            f"systemd service observation failed: {error}"
+        ) from error
+
+    if result.returncode != 0:
+        detail = result.stderr.strip() or "systemctl returned a non-zero exit code"
+        raise ServiceObservationError(detail)
+
+    services = []
+    for line in result.stdout.splitlines():
+        fields = line.split(None, 4)
+        if len(fields) < 4:
+            continue
+        unit, load, active, sub = fields[:4]
+        description = fields[4] if len(fields) == 5 else ""
+        services.append(
+            {
+                "unit": unit,
+                "load": load,
+                "active": active,
+                "sub": sub,
+                "description": description,
+            }
+        )
+    return services
