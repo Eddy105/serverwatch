@@ -34,6 +34,7 @@ get_uptime_seconds = collectors.get_uptime_seconds
 get_load_average = collectors.get_load_average
 get_network_io = collectors.get_network_io
 get_network_status = collectors.get_network_status
+get_systemd_services = collectors.get_systemd_services
 
 
 def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="/"):
@@ -84,6 +85,7 @@ def parse_arguments():
         ("--network-status", "Show network interface link status only."),
         ("--health-breakdown", "Show CPU, memory, and disk health components."),
         ("--diagnose", "Show deterministic diagnostic findings."),
+        ("--services", "Show read-only systemd service state."),
         ("--status", "Show health status only."),
     )
     for option, help_text in metric_options:
@@ -263,6 +265,8 @@ def get_selected_metric(args):
             health_breakdown_getter,
         ),
         ("diagnose", getattr(args, "diagnose", False), diagnosis_getter),
+        ("services", getattr(args, "services", False), get_systemd_services),
+        ("services", getattr(args, "services", False), get_systemd_services),
     )
     for name, enabled, getter in selectors:
         if enabled:
@@ -379,6 +383,12 @@ def print_selected_metric(
             print(
                 f"{interface['interface']}: {state} {speed_text}, "
                 f"MTU {interface['mtu']}"
+            )
+    elif name == "services":
+        for service in value:
+            print(
+                f"{service['unit']}: {service['active']}/{service['sub']} "
+                f"({service['load']}) {service['description']}"
             )
     elif name == "diagnose":
         if not value:
@@ -498,6 +508,7 @@ def main():
         DiskIoUnavailableError,
         TemperatureUnavailableError,
         NetworkInterfaceError,
+        collectors.ServiceObservationError,
     ) as error:
         raise SystemExit(f"serverwatch: error: {error}") from error
     except OSError as error:
