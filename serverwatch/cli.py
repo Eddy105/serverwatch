@@ -34,6 +34,7 @@ get_uptime_seconds = collectors.get_uptime_seconds
 get_load_average = collectors.get_load_average
 get_network_io = collectors.get_network_io
 get_network_status = collectors.get_network_status
+get_systemd_services = collectors.get_systemd_services
 
 
 def collect_metrics(warning_threshold=75.0, critical_threshold=90.0, disk_path="/"):
@@ -263,6 +264,7 @@ def get_selected_metric(args):
             health_breakdown_getter,
         ),
         ("diagnose", getattr(args, "diagnose", False), diagnosis_getter),
+        ("services", getattr(args, "services", False), get_systemd_services),
     )
     for name, enabled, getter in selectors:
         if enabled:
